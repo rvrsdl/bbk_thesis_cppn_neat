@@ -38,8 +38,8 @@ class Genome(object):
         # Now make some connections between inputs and outputs according to the probabilities in p.
         # All output neurons need to be connected to something. Doesn't matter if not all inputs are connected.
         self.conn_genes = []
-        inp_ids = self.get_input_node_ids()
-        for o_n in self.get_output_node_ids():
+        inp_ids = self.get_node_ids('input')
+        for o_n in self.get_node_ids('output'):
             n_conns = np.random.randint(1, len(inp_ids)+1)
             chosen_inputs = np.random.choice(inp_ids, n_conns)
             for i_n in chosen_inputs:
@@ -52,13 +52,13 @@ class Genome(object):
                     'enabled': True
                 })
                 self.innov += 1
-
-    def get_output_node_ids(self):
-        return [n['id'] for n in self.node_genes if n['layer'] == 'output']
-
-    def get_input_node_ids(self):
-        return [n['id'] for n in self.node_genes if n['layer'] == 'input']
-
+                
+    def get_node_ids(self, layer='all'):
+        if layer=='all':
+            return [n['id'] for n in self.node_genes]
+        else:
+            return [n['id'] for n in self.node_genes if n['layer'] == layer]
+            
     def get_connections(self, only_enabled):
         """
         Returns a set of tuples of connected nodes: (from, to)
@@ -240,7 +240,7 @@ class NNFF(object):
         """
         conns = self.genome.get_connections(True)
         layers = []
-        seen = set(self.genome.get_input_node_ids())
+        seen = set(self.genome.get_node_ids('input'))
         layers.append(seen)
         while True:
             # Get nodes that directly connect to what we have seen
@@ -274,8 +274,14 @@ class NNFF(object):
             out_vec = sigmoid(np.dot(weights, inp_vec) + bias)
             node_vals.update( {node: val for (node,val) in zip(wgt_dict['to_nodes'],out_vec)} )
         
-        return [node_vals[n] for n in self.genome.get_output_node_ids()]
+        return [node_vals[n] for n in self.genome.get_node_ids('output')]
         
     
 def sigmoid(z):
     return 1.0/(1.0+np.exp(-z))
+
+def netviz(genome):
+    """
+    Pass in a genome - prints a quick visualisation of the network.
+    """
+    genome.node_genes
