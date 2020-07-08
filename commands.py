@@ -7,24 +7,27 @@ Created on Sun Mar 22 13:56:41 2020
 @author: riversdale
 """
 
-import nnet as z
+import genome as g
 import netviz as v
+import nnet as n
 
-g = z.Genome(3, 3, verbose=True)
+a = g.Genome(3, 3, verbose=True)
 #g.add_connection()
-g.add_node()
-v.netviz(g)
+a.add_node()
+v.netviz(a)
+net = n.NNFF(a)
+net.feedforward([1,1,1])
 
-g2 = z.Genome(3,3,verbose=True)
-v.netviz(g2)
+b = g.Genome(3,3,verbose=True)
+v.netviz(b)
 
-ch = g.crossover(g2)
+ch = a.crossover(b)
 v.netviz(ch)
 
-d = z.Genome(g.n_in, g.n_out, init_conns=False, recurrent=g.recurrent, verbose=g.verbose)
+d = g.Genome(g.n_in, g.n_out, init_conns=False, recurrent=g.recurrent, verbose=g.verbose)
 dnodes = d.get_node_ids()
 
-p1 = z.Genome.load('stanley_parent1.json')
-p2 = z.Genome.load('stanley_parent2.json')
+p1 = g.Genome.load('stanley_parent1.json')
+p2 = g.Genome.load('stanley_parent2.json')
 ch = p1.crossover(p2)
 v.netviz(ch)

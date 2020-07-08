@@ -1,5 +1,12 @@
 # neat
 
+Contents:
+- genome.py: contains the Genome class which handles mutation etc.
+- nnet.py: Contains the FeedForwardNet class which takes a Genome as input.
+- population.py: TODO. Will contain Population class for handling pop-level stuff
+- netviz.py: Contains functions for visualising a Genome.
+
+
 8th July 2020:
 - Changing genome so that rather than each node having
 a bias, there will be a single bias input node (always 1)
