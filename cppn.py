@@ -1,7 +1,9 @@
+import time
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.image import imsave
-import matplotlib.animation as animation
+#import matplotlib.animation as animation
 from PIL import Image
 
 from genome import Genome
@@ -12,6 +14,10 @@ from netviz import netviz
 CHANNELS = 3 # 3 for RGB
 
 def create_image(net, imsize):
+    """
+    Creates image by looping through pixel coordinates.
+    Obsolete: use create_image2 instead.
+    """
     size_x = imsize[0]
     size_y = imsize[1]
     pixels = size_x*size_y
@@ -67,25 +73,42 @@ def create_genome():
     G.randomise()
     return G
 
-for i in range(13,25):
-    print("Creating image {:d}".format(i))
-    G = create_genome()
-    net = NNFF(G)
-    imsize = 64
-    img = create_image2(net, (imsize,imsize))
-    #show_image(img)
-    stem_name = "./output/img64c_{:d}".format(i)
-    imsave(stem_name+".png", img, vmin=0, vmax=1, cmap='gray')
-    G.save(stem_name+".json")
+def do_run(num=10, size=64):
+    """
+    Do a run of eg. 10 images, saving the images (.png) 
+    and the corresponding networks (.json) in the output folder.
+    """
+    for i in range(num):
+        print("Creating image {:d}".format(i))
+        G = create_genome()
+        net = NNFF(G)
+        img = create_image2(net, (size,size))
+        #show_image(img)
+        stem_name = "./output/e{}".format(get_epoch_str())
+        imsave("{}_{:d}.png".format(stem_name, size), img, vmin=0, vmax=1)
+        G.save(stem_name+".json")
 
-def upscale(img_num, imsize=512):
-    G = Genome.load("./output/img64c_{:d}.json".format(img_num))
+def upscale_saved(epoch_str, imsize=512):
+    """
+    Load one of the saved networks and produce a hi res image.
+    """
+    if type(imsize)==int:
+        str_imsize = imsize
+        imsize = (imsize, imsize)
+    else:
+        str_imsize = "{:d}x{:d}".format(imsize[0],imsize[1])
+    stem_name = "./output/{}".format(epoch_str)
+    G = Genome.load(stem_name+".json")
     net = NNFF(G)
-    img = create_image2(net, (imsize,imsize))
+    img = create_image2(net, imsize)
     show_image(img)
-    imsave("./output/img64c_{:d}_to{:d}.png".format(img_num, imsize), img, vmin=0, vmax=1)
+    imsave("{}_{}.png".format(stem_name, str_imsize), img, vmin=0, vmax=1)
     
-def animate(net, imsize=128):
+def animate(net, imsize=128, filename='test.gif'):
+    """
+    By varying the bias input we can alter the image in smooth steps.
+    This function makes a GIF of this.
+    """
     frames = []
     for bias in np.arange(-3,3.5,0.5):
         img_dat = create_image2(net, (imsize,imsize), bias)
@@ -93,6 +116,42 @@ def animate(net, imsize=128):
     loop = []
     loop.extend(frames[1:]) # to go in one direction add all after the first frame
     loop.extend(frames[-2:0:-1]) # then to come back append in reverse direction
-    frames[0].save('test.gif', format='GIF', append_images=loop, save_all=True, duration=100, loop=0)
+    frames[0].save(filename, format='GIF', append_images=loop, save_all=True, duration=100, loop=0)
     
+def animate_saved(epoch_str, imsize=128):
+    """
+    Make a GIF from a saved network.
+    """
+    stem_name = "./output/{}".format(epoch_str)
+    G = Genome.load(stem_name+".json")
+    net = NNFF(G)
+    gif_name = "{}_{:d}.gif".format(stem_name, imsize)
+    animate(net, imsize=imsize, filename=gif_name)
     
+def crossover_saved(estr1, estr2, imsize=64):
+    """
+    Crossover two saved genomes and save the child and resulting image.
+    N.B. This won't work unless the two parents are from the same
+    population (because they need to have the smae global innovation
+    ids)
+    """
+    G1 = Genome.load("./output/{}.json".format(estr1))
+    G2 = Genome.load("./output/{}.json".format(estr2))
+    G3 = G1.crossover(G2)
+    net = NNFF(G3)
+    img = create_image2(net, (imsize,imsize))
+    stem_name = "./output/e{}".format(get_epoch_str)
+    imsave("{}_{:d}.png".format(stem_name, imsize), img, vmin=0, vmax=1)
+    G3.save(stem_name+".json")
+    print("Saved as: " + stem_name)
+    
+
+def get_epoch_str():
+    """
+    For filenames - the Unix epoch can be used as an identifier.
+    eg. 
+    e1594252310.json
+    e1594252310_img64.png
+    e1594252310_img256.gif
+    """
+    return str(int(time.time()))

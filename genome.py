@@ -5,6 +5,8 @@ import json
 
 import numpy as np
 
+INNOV = 0
+
 class Genome(object):
     """
     This object manages the genome and handles mutation.
@@ -23,7 +25,7 @@ class Genome(object):
         self.n_out = n_out
         self.recurrent = recurrent
         self.verbose = verbose
-        self.innov = 0 # to keep track of the innovation number
+        self.fitness = 0 # init fitness to zero.
         # Add the input and output nodes to the list of node_genes
         self.node_genes = []
         for i in range(n_in):
@@ -47,6 +49,7 @@ class Genome(object):
     def init_conns(self):
         # Now make some connections between inputs and outputs according to the probabilities in p.
         # All output neurons need to be connected to something. Doesn't matter if not all inputs are connected.
+        global INNOV
         inp_ids = self.get_node_ids('input')
         for o_n in self.get_node_ids('output'):
             n_conns = np.random.randint(1, len(inp_ids))
@@ -55,13 +58,13 @@ class Genome(object):
             for i_n in chosen_inputs:
                 if self.verbose: print('Connecting node %d to node %d' % (i_n, o_n))
                 self.conn_genes.append({
-                    'innov': self.innov,
+                    'innov': INNOV,
                     'from': i_n,
                     'to': o_n,
                     'wgt': np.random.randn(), # From the normal distribution
                     'enabled': True
                 })
-                self.innov += 1
+                INNOV += 1
                 
     def get_node_ids(self, layer='all'):
         if layer=='all':
@@ -107,6 +110,7 @@ class Genome(object):
         allowed.
         :return: None
         """
+        global INNOV
         existing_conns = self.get_connections(only_enabled=False)
         all_possible_conns = {(u['id'], v['id']) for u in self.node_genes for v in self.node_genes
                           if u['id'] != v['id'] # can't connect a node to itself
@@ -124,13 +128,13 @@ class Genome(object):
             chosen = random.sample(available_conns, 1)[0]
             if self.verbose: print('We chose: ' + str(chosen))
             self.conn_genes.append({
-                'innov': self.innov,
+                'innov': INNOV,
                 'from': chosen[0],
                 'to': chosen[1],
                 'wgt': np.random.randn(),  # From the normal distribution
                 'enabled': True
             })
-            self.innov += 1
+            INNOV += 1
         else:
             print('No new connections possible')
 
@@ -166,6 +170,7 @@ class Genome(object):
         This means that when the node is first added it should have no effect.
         The original connection is kept but disabled.
         """
+        global INNOV
         chosen_gene = random.sample(self.conn_genes, 1)[0]
         # Create the new node
         new_node_id = len(self.node_genes)
@@ -177,21 +182,21 @@ class Genome(object):
         })
         # Reorganise the connections
         new_conn1 = {
-            'innov': self.innov,
+            'innov': INNOV,
             'from': chosen_gene['from'],
             'to': new_node_id,
             'wgt': 1, # first half of new split connection is 1.
             'enabled': True
         }
-        self.innov += 1
+        INNOV += 1
         new_conn2 = {
-            'innov': self.innov,
+            'innov': INNOV,
             'from': new_node_id,
             'to': chosen_gene['to'],
             'wgt': chosen_gene['wgt'],  # second half of new split connection is original weight
             'enabled': True
         }
-        self.innov += 1
+        INNOV += 1
         self.conn_genes.append(new_conn1)
         self.conn_genes.append(new_conn2)
         # Disable old connection
@@ -213,23 +218,39 @@ class Genome(object):
         """
         pass
     
+    def alter_weight(self, n_to_alter=1):
+        chosen = random.sample(self.conn_genes, n_to_alter)
+        for conn in chosen:
+            # peturb by a number selected from the normal distribution.
+            conn['wgt'] += float(np.random.randn(1))
+    
     def mutate(self):
         """
         Could have a method which chooses one of the three mutation types
         (add_connection, add_node, alter_weight)
         based on probability of each. (Would this be an input or instance variables?)
-        :return:
+        For now using fixed probabilities:
+            add_connection should have higher probability than add_node
+            (because we need more connections than nodes)
+            alter_weight should have the highest probability.
         """
-        pass
+        wgt_prob = 0.5
+        conn_prob = 0.3
+        node_prob = 0.2
+        r = random.random()
+        if r <= wgt_prob:
+            self.alter_weight
+        elif r <= wgt_prob + conn_prob:
+            self.add_connection()
+        elif r <= wgt_prob + conn_prob + node_prob:
+            self.add_node()
     
-    def randomise(self):
+    def randomise_weights(self):
         """
         We shouldn't use this for real - just adding for testing.
         """
         for g in self.conn_genes:
             g['wgt'] = np.random.randn()
-        for n in self.node_genes:
-            n['bias'] = np.random.randn()
             
     def empty(self):
         """
@@ -238,7 +259,7 @@ class Genome(object):
         """
         return Genome(0, 0, recurrent=self.recurrent, verbose=self.verbose)
 
-    def crossover(self, other: Genome):
+    def crossover(self, other: Genome, mut_rate=0):
         # Create a child genome with no connections
         child = Genome(self.n_in, self.n_out, init_conns=False, recurrent=self.recurrent, verbose=self.verbose)
         # Choose and add the connection genes
@@ -252,9 +273,10 @@ class Genome(object):
                     opt1 = self.get_conn_gene(i)
                     opt2 = other.get_conn_gene(i)
                     chosen = opt1.copy() if chooser(self, other) else opt2.copy()
-                    if not(opt1['enabled'] and opt2['enabled']):
-                        # Must be enabled in both parents to be enabled in offspring (for the moment)
-                        chosen['enabled'] = False
+                    if not(opt1['enabled']) or not(opt2['enabled']):
+                        # Stanley: "there’s a preset chance that an inherited gene is disabled if it is disabled in either parent."
+                        if random.random()<0.5: # hard coded 50% chance. not ideal.
+                            chosen['enabled'] = False
                 else:
                     chosen = self.get_conn_gene(i).copy()
             elif i in other_innovs:
@@ -281,6 +303,8 @@ class Genome(object):
                 assert n in have_nodes, "Node {} isn't in child".format(n)
                 continue
             child.node_genes.append(chosen.copy())
+        if random.random()<mut_rate:
+            child.mutate()
         return child
       
     # def zip_align(d1, d2, align_on):
