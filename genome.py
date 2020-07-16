@@ -6,6 +6,7 @@ import json
 import numpy as np
 
 INNOV = 0
+CONN_DICT = dict()
 
 class Genome(object):
     """
@@ -40,7 +41,7 @@ class Genome(object):
                 'id': i,
                 'layer': 'output',
                 'agg_func': 'sum',
-                'act_func': 'sigmoid',
+                'act_func': 'sigmoid' #output function #'sigmoid'
             })
         self.conn_genes = []
         if init_conns:
@@ -50,6 +51,7 @@ class Genome(object):
         # Now make some connections between inputs and outputs according to the probabilities in p.
         # All output neurons need to be connected to something. Doesn't matter if not all inputs are connected.
         global INNOV
+        global CONN_DICT
         inp_ids = self.get_node_ids('input')
         for o_n in self.get_node_ids('output'):
             n_conns = np.random.randint(1, len(inp_ids))
@@ -57,6 +59,14 @@ class Genome(object):
             chosen_inputs = random.sample(inp_ids, n_conns)
             for i_n in chosen_inputs:
                 if self.verbose: print('Connecting node %d to node %d' % (i_n, o_n))
+                # check if it already exists in the connection dictionary
+                if (i_n, o_n) in CONN_DICT:
+                    innov = CONN_DICT[(i_n, o_n)]
+                else:
+                    innov = INNOV
+                    CONN_DICT[(i_n, o_n)] = innov
+                    INNOV += 1
+                # add the gene
                 self.conn_genes.append({
                     'innov': INNOV,
                     'from': i_n,
@@ -64,7 +74,7 @@ class Genome(object):
                     'wgt': np.random.randn(), # From the normal distribution
                     'enabled': True
                 })
-                INNOV += 1
+                
                 
     def get_node_ids(self, layer='all'):
         if layer=='all':
@@ -111,6 +121,7 @@ class Genome(object):
         :return: None
         """
         global INNOV
+        global CONN_DICT
         existing_conns = self.get_connections(only_enabled=False)
         all_possible_conns = {(u['id'], v['id']) for u in self.node_genes for v in self.node_genes
                           if u['id'] != v['id'] # can't connect a node to itself
@@ -127,6 +138,14 @@ class Genome(object):
         if available_conns:
             chosen = random.sample(available_conns, 1)[0]
             if self.verbose: print('We chose: ' + str(chosen))
+            # check if it already exists in the connection dictionary
+            if chosen in CONN_DICT:
+                innov = CONN_DICT[chosen]
+            else:
+                innov = INNOV
+                CONN_DICT[chosen] = innov
+                INNOV += 1
+            # add the connection gene.
             self.conn_genes.append({
                 'innov': INNOV,
                 'from': chosen[0],
@@ -178,7 +197,7 @@ class Genome(object):
             'id': new_node_id,
             'layer': 'hidden',
             'agg_func': 'sum',
-            'act_func': 'tanh', # going to use tanh for all but output layer at the mo (following otoro)
+            'act_func': random.sample(['sin','tanh'],1)[0], # going to use tanh for all but output layer at the mo (following otoro)
         })
         # Reorganise the connections
         new_conn1 = {

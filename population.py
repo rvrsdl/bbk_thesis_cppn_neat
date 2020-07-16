@@ -89,6 +89,12 @@ class Population(object):
     def identify_species(self):
         pass
     
+    def run(self, eval_func, generations=5):
+        # eval_func should take a list of genomes and set each of their fitness
+        for i in range(generations):
+            eval_func(self.this_gen, self.generation)
+            self.breed_next_gen()
+    
     def __str__(self):
         out = ["Population stats:"]
         out.append("- Generation: {:d}".format(self.generation))

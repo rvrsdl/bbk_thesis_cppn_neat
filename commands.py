@@ -33,8 +33,12 @@ import population as p
 # ch = p1.crossover(p2)
 # v.netviz(ch)
 
-import population as p
-pop = p.Population(4, 3)
+from population import Population
+from genome import Genome
+from nnet import NNFF
+from netviz import netviz
+
+pop = Population(4, 3)
 ch = pop.this_gen[1].crossover(pop.this_gen[3])
 v.netviz(pop.this_gen[1])
 v.netviz(pop.this_gen[3])
@@ -47,3 +51,14 @@ for i in range(10):
 net = NNFF(pop.this_gen[5])
 img = create_image2(net,(64,64))
 show_image(img)
+
+import os
+import cppn
+
+cppn.CHANNELS=1
+cppn.do_run(num=35)
+import tk_display
+grd = tk_display.ImgGrid('output/*.png')
+grd.run()
+
+# Doing live image grid of pop without saving

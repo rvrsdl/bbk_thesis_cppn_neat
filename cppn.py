@@ -66,14 +66,14 @@ def show_image(img):
 def create_genome():
     G = Genome(4, CHANNELS)
     # Make it more complex
-    for i in range(30):
+    for i in range(30): # 30 seems about the minimum to get interesting
         G.add_node()
         for j in range(i//2):
             G.add_connection()
-    G.randomise()
+    G.randomise_weights()
     return G
 
-def do_run(num=10, size=64):
+def do_run(num=10, imsize=128):
     """
     Do a run of eg. 10 images, saving the images (.png) 
     and the corresponding networks (.json) in the output folder.
@@ -82,10 +82,10 @@ def do_run(num=10, size=64):
         print("Creating image {:d}".format(i))
         G = create_genome()
         net = NNFF(G)
-        img = create_image2(net, (size,size))
+        img = create_image2(net, (imsize,imsize))
         #show_image(img)
         stem_name = "./output/e{}".format(get_epoch_str())
-        imsave("{}_{:d}.png".format(stem_name, size), img, vmin=0, vmax=1)
+        imsave("{}_{:d}.png".format(stem_name, imsize), img, vmin=0, vmax=1, cmap='binary')
         G.save(stem_name+".json")
 
 def upscale_saved(epoch_str, imsize=512):
@@ -110,13 +110,13 @@ def animate(net, imsize=128, filename='test.gif'):
     This function makes a GIF of this.
     """
     frames = []
-    for bias in np.arange(-3,3.5,0.5):
+    for bias in np.arange(-1.8,2,0.2):
         img_dat = create_image2(net, (imsize,imsize), bias)
         frames.append(Image.fromarray(np.uint8(img_dat*255)))
     loop = []
     loop.extend(frames[1:]) # to go in one direction add all after the first frame
     loop.extend(frames[-2:0:-1]) # then to come back append in reverse direction
-    frames[0].save(filename, format='GIF', append_images=loop, save_all=True, duration=100, loop=0)
+    frames[0].save(filename, format='GIF', append_images=loop, duration=120, loop=0)
     
 def animate_saved(epoch_str, imsize=128):
     """
@@ -145,7 +145,19 @@ def crossover_saved(estr1, estr2, imsize=64):
     G3.save(stem_name+".json")
     print("Saved as: " + stem_name)
     
-
+def netviz_saved(epoch_str):
+    """
+    Saves a PNG of the visualisation of a saved (json) network.
+    PROBLEM: Currently saves two files, one of which is empty.
+    """
+    G = Genome.load("./output/{}.json".format(epoch_str))
+    nn = netviz(G)
+    nn.format = 'png'
+    out_fn = "./output/{}_net.png".format(epoch_str)
+    nn.render(filename=out_fn, format='png')
+    print("Saved as: {}".format(out_fn))
+    
+    
 def get_epoch_str():
     """
     For filenames - the Unix epoch can be used as an identifier.

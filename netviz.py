@@ -28,5 +28,4 @@ def netviz(genome, show_wgts=False):
             else:
                 label = ''
             nn.edge(str(conn['from']), str(conn['to']), label=label)
-            
     return nn

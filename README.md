@@ -24,7 +24,7 @@ then fixed or can they mutate?
 
 TO DO!:
 - PROBLEM: currently if the same innovation (eg connection from node 1 to node 7)
-appears separately in different individuals because f different mutations,
+appears separately in different individuals because of different mutations,
 it will have different innovation numbers. This means that when crossover
 takes place there can be duplication because the same connection has two
 different innovation numbers.
@@ -34,3 +34,8 @@ as innovation numbers. Then when a mutation wants to add a connection,
 rather than just incrementing the innovation number and labelling the new conn
 with that, it should first check the dictionary to see if that innovation
 has already occured and if so, use the existing innovation number to label it.
+
+better to reorganise methods as:
+make_connection(from, to, wgt): handles dictionary lookup and creating the gene
+add_random_connection(): selects an allowed connection and calls make_connection to create it.
+init_connections(): use existing sampling routing then call make_connection()
