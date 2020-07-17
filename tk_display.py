@@ -123,6 +123,11 @@ class ImgGrid(object):
             # To remov image and set text do:  image='', text='hello'
 
     def submit_scores(self):
+        """
+        Puts all the slider values in self.scores and closes
+        the window (ending the main loop which was launched in
+        self.run() )
+        """
         for s in self.sliders:
             self.scores.append(s.get())
         self.root.destroy() # Closes the window.

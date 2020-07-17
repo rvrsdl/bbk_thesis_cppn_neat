@@ -48,9 +48,10 @@ for i in range(10):
     pop.update_pop_fitness()
     pop.breed_next_gen()
 
-net = NNFF(pop.this_gen[5])
+net = NNFF(pop.this_gen[4])
 img = create_image2(net,(64,64))
 show_image(img)
+animate(net)
 
 import os
 import cppn
@@ -58,7 +59,11 @@ import cppn
 cppn.CHANNELS=1
 cppn.do_run(num=35)
 import tk_display
-grd = tk_display.ImgGrid('output/*.png')
+#grd = tk_display.ImgGrid('output/Thu16July/*128.png', n_imgs=28, nrows=4, ncols=7)
+grd = tk_display.ImgGrid('output/e15950176*_128.png', n_imgs=28, nrows=4, ncols=7)
 grd.run()
 
-# Doing live image grid of pop without saving
+G = Genome.load("output/e159499405049.json")
+net = NNFF(G)
+img = create_image2(net,(128,128))
+show_image(img)

@@ -16,11 +16,20 @@ mutates in order to change the bias.
 To Consider:
 - Aggregation and activation functions are presumably
 chosen at time of node creation. Are these functions
-then fixed or can they mutate? 
+then fixed or can they mutate? DECIDED - fixed as an inherent property of each node.
 - Crossover:
 -- shared genes: choose randomly or by fitness
 -- disjoint/excess: take all, choose whether to take randomly or by fitness
 -- reactivate diabled genes? if it is enabled in either parent?
+- Meta-genetics. Probability of choosing each activation func (or each
+type of mutation) could be a property of the genome. This meta 
+property could also evolve (with what mechanics??)
+-- motivation: genomes whic use the mod() activation function
+a lot will produce a certain *style* of images even though the 
+content of the image differs. Style is like a meta property that 
+could be shared within certain 'bloodlines'.
+-- so could average actfunc probabilities at every crossover?
+
 
 TO DO!:
 - PROBLEM: currently if the same innovation (eg connection from node 1 to node 7)
@@ -39,3 +48,15 @@ better to reorganise methods as:
 make_connection(from, to, wgt): handles dictionary lookup and creating the gene
 add_random_connection(): selects an allowed connection and calls make_connection to create it.
 init_connections(): use existing sampling routing then call make_connection()
+
+Novelty search
+- Stanley's idea is just to keep a record of every image we have seen and 
+assign fitness based on how different an image is from anything we have seen
+before.
+- But how do we assess difference? Most obvious is pixel-by-pixel value difference
+(cartesian distance between vectors of pixel values).
+- But an image of vertical b&w stipes shifted one pixel to the right would be 100%
+different.
+- More useful to capture something about the structure of the image.
+- So could put it through a CNN and measure difference of output vectors.
+- But CNN not likely to be good without training (so could train on real images orr..?)

@@ -5,6 +5,8 @@ import json
 
 import numpy as np
 
+from funcs import get_funcs
+
 INNOV = 0
 CONN_DICT = dict()
 
@@ -197,7 +199,7 @@ class Genome(object):
             'id': new_node_id,
             'layer': 'hidden',
             'agg_func': 'sum',
-            'act_func': random.sample(['sin','tanh'],1)[0], # going to use tanh for all but output layer at the mo (following otoro)
+            'act_func': random.sample(get_funcs('names'),1)[0], # going to use tanh for all but output layer at the mo (following otoro)
         })
         # Reorganise the connections
         new_conn1 = {

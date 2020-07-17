@@ -66,7 +66,7 @@ def show_image(img):
 def create_genome():
     G = Genome(4, CHANNELS)
     # Make it more complex
-    for i in range(30): # 30 seems about the minimum to get interesting
+    for i in range(20): # 30 seems about the minimum to get interesting
         G.add_node()
         for j in range(i//2):
             G.add_connection()
@@ -102,7 +102,7 @@ def upscale_saved(epoch_str, imsize=512):
     net = NNFF(G)
     img = create_image2(net, imsize)
     show_image(img)
-    imsave("{}_{}.png".format(stem_name, str_imsize), img, vmin=0, vmax=1)
+    imsave("{}_{}.png".format(stem_name, str_imsize), img, vmin=0, vmax=1, cmap='binary')
     
 def animate(net, imsize=128, filename='test.gif'):
     """
@@ -110,7 +110,8 @@ def animate(net, imsize=128, filename='test.gif'):
     This function makes a GIF of this.
     """
     frames = []
-    for bias in np.arange(-1.8,2,0.2):
+    #np.arange(-1.8,2,0.2):
+    for bias in np.arange(-0.8,0.8,0.2):
         img_dat = create_image2(net, (imsize,imsize), bias)
         frames.append(Image.fromarray(np.uint8(img_dat*255)))
     loop = []
@@ -166,4 +167,4 @@ def get_epoch_str():
     e1594252310_img64.png
     e1594252310_img256.gif
     """
-    return str(int(time.time()))
+    return str(int(time.time()*100))
