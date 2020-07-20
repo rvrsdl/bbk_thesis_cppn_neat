@@ -60,7 +60,7 @@ cppn.CHANNELS=1
 cppn.do_run(num=35)
 import tk_display
 #grd = tk_display.ImgGrid('output/Thu16July/*128.png', n_imgs=28, nrows=4, ncols=7)
-grd = tk_display.ImgGrid('output/e15950176*_128.png', n_imgs=28, nrows=4, ncols=7)
+grd = tk_display.ImgGrid('output/e15952*_128.png', n_imgs=28, nrows=4, ncols=7)
 grd.run()
 
 G = Genome.load("output/e159499405049.json")

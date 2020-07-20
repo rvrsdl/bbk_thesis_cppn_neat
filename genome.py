@@ -5,7 +5,7 @@ import json
 
 import numpy as np
 
-from funcs import get_funcs
+from funcs import get_funcs, create_args
 
 INNOV = 0
 CONN_DICT = dict()
@@ -39,11 +39,14 @@ class Genome(object):
                 'act_func': None,
             })
         for i in range(n_in, n_in+n_out):
+            act_func = random.choice(['gaussian','sigmoid'])
+            act_args = create_args(get_funcs(act_func))
             self.node_genes.append({
                 'id': i,
                 'layer': 'output',
                 'agg_func': 'sum',
-                'act_func': 'sigmoid' #output function #'sigmoid'
+                'act_func': act_func,
+                'act_args': act_args
             })
         self.conn_genes = []
         if init_conns:
@@ -195,11 +198,15 @@ class Genome(object):
         chosen_gene = random.sample(self.conn_genes, 1)[0]
         # Create the new node
         new_node_id = len(self.node_genes)
+        act_func = random.choice(get_funcs('names'))
+        # NB Otoro uses tanh for all but the output layer.
+        act_args = create_args(get_funcs(act_func)) # gets some random values for any extra args required
         self.node_genes.append({
             'id': new_node_id,
             'layer': 'hidden',
             'agg_func': 'sum',
-            'act_func': random.sample(get_funcs('names'),1)[0], # going to use tanh for all but output layer at the mo (following otoro)
+            'act_func': act_func,
+            'act_args': act_args
         })
         # Reorganise the connections
         new_conn1 = {

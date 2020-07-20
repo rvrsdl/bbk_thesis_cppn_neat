@@ -80,13 +80,14 @@ def do_run(num=10, imsize=128):
     """
     for i in range(num):
         print("Creating image {:d}".format(i))
+        stem_name = "./output/e{}".format(get_epoch_str())
         G = create_genome()
+        G.save(stem_name+".json")
         net = NNFF(G)
         img = create_image2(net, (imsize,imsize))
         #show_image(img)
-        stem_name = "./output/e{}".format(get_epoch_str())
         imsave("{}_{:d}.png".format(stem_name, imsize), img, vmin=0, vmax=1, cmap='binary')
-        G.save(stem_name+".json")
+        
 
 def upscale_saved(epoch_str, imsize=512):
     """
