@@ -43,11 +43,12 @@ as innovation numbers. Then when a mutation wants to add a connection,
 rather than just incrementing the innovation number and labelling the new conn
 with that, it should first check the dictionary to see if that innovation
 has already occured and if so, use the existing innovation number to label it.
+Node numbers will also need to be global!
 
 better to reorganise methods as:
 make_connection(from, to, wgt): handles dictionary lookup and creating the gene
 add_random_connection(): selects an allowed connection and calls make_connection to create it.
-init_connections(): use existing sampling routing then call make_connection()
+init_connections(): use existing sampling routine then call make_connection()
 
 Novelty search
 - Stanley's idea is just to keep a record of every image we have seen and 

@@ -15,7 +15,7 @@ import cppn
 CHANNELS = 3
 P = 28
 cppn.CHANNELS = CHANNELS
-pop = Population(4, CHANNELS, popsize=P)
+pop = Population(4, CHANNELS, popsize=P, mutation_rate=0.8)
 
 # Placeholder, just to make it a bit more complex:
 # for i in range(10):
@@ -41,5 +41,5 @@ def interactive_fitness(genomes, gen_num):
     
 # We pass an evaluation function to the pop.run method   
 # This func must update each genome's fitness
-pop.run(interactive_fitness)
+pop.run(interactive_fitness, generations=100)
 

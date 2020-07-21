@@ -5,10 +5,11 @@ import json
 
 import numpy as np
 
-from funcs import get_funcs
+from funcs import get_funcs, create_args
 
 INNOV = 0
 CONN_DICT = dict()
+#NODE_DICT = dict()
 
 class Genome(object):
     """
@@ -39,11 +40,14 @@ class Genome(object):
                 'act_func': None,
             })
         for i in range(n_in, n_in+n_out):
+            act_func = random.choice(['gaussian','sigmoid'])
+            act_args = create_args(get_funcs(act_func))
             self.node_genes.append({
                 'id': i,
                 'layer': 'output',
                 'agg_func': 'sum',
-                'act_func': 'sigmoid' #output function #'sigmoid'
+                'act_func': act_func,
+                'act_args': act_args
             })
         self.conn_genes = []
         if init_conns:
@@ -52,8 +56,6 @@ class Genome(object):
     def init_conns(self):
         # Now make some connections between inputs and outputs according to the probabilities in p.
         # All output neurons need to be connected to something. Doesn't matter if not all inputs are connected.
-        global INNOV
-        global CONN_DICT
         inp_ids = self.get_node_ids('input')
         for o_n in self.get_node_ids('output'):
             n_conns = np.random.randint(1, len(inp_ids))
@@ -61,21 +63,7 @@ class Genome(object):
             chosen_inputs = random.sample(inp_ids, n_conns)
             for i_n in chosen_inputs:
                 if self.verbose: print('Connecting node %d to node %d' % (i_n, o_n))
-                # check if it already exists in the connection dictionary
-                if (i_n, o_n) in CONN_DICT:
-                    innov = CONN_DICT[(i_n, o_n)]
-                else:
-                    innov = INNOV
-                    CONN_DICT[(i_n, o_n)] = innov
-                    INNOV += 1
-                # add the gene
-                self.conn_genes.append({
-                    'innov': INNOV,
-                    'from': i_n,
-                    'to': o_n,
-                    'wgt': np.random.randn(), # From the normal distribution
-                    'enabled': True
-                })
+                self.make_connection((i_n, o_n))
                 
                 
     def get_node_ids(self, layer='all'):
@@ -122,8 +110,6 @@ class Genome(object):
         allowed.
         :return: None
         """
-        global INNOV
-        global CONN_DICT
         existing_conns = self.get_connections(only_enabled=False)
         all_possible_conns = {(u['id'], v['id']) for u in self.node_genes for v in self.node_genes
                           if u['id'] != v['id'] # can't connect a node to itself
@@ -140,22 +126,7 @@ class Genome(object):
         if available_conns:
             chosen = random.sample(available_conns, 1)[0]
             if self.verbose: print('We chose: ' + str(chosen))
-            # check if it already exists in the connection dictionary
-            if chosen in CONN_DICT:
-                innov = CONN_DICT[chosen]
-            else:
-                innov = INNOV
-                CONN_DICT[chosen] = innov
-                INNOV += 1
-            # add the connection gene.
-            self.conn_genes.append({
-                'innov': INNOV,
-                'from': chosen[0],
-                'to': chosen[1],
-                'wgt': np.random.randn(),  # From the normal distribution
-                'enabled': True
-            })
-            INNOV += 1
+            self.make_connection(chosen)
         else:
             print('No new connections possible')
 
@@ -191,37 +162,49 @@ class Genome(object):
         This means that when the node is first added it should have no effect.
         The original connection is kept but disabled.
         """
-        global INNOV
         chosen_gene = random.sample(self.conn_genes, 1)[0]
         # Create the new node
         new_node_id = len(self.node_genes)
+        act_func = random.choice(get_funcs('names'))
+        # NB Otoro uses tanh for all but the output layer.
+        act_args = create_args(get_funcs(act_func)) # gets some random values for any extra args required
         self.node_genes.append({
             'id': new_node_id,
             'layer': 'hidden',
             'agg_func': 'sum',
-            'act_func': random.sample(get_funcs('names'),1)[0], # going to use tanh for all but output layer at the mo (following otoro)
+            'act_func': act_func,
+            'act_args': act_args
         })
         # Reorganise the connections
-        new_conn1 = {
-            'innov': INNOV,
-            'from': chosen_gene['from'],
-            'to': new_node_id,
-            'wgt': 1, # first half of new split connection is 1.
-            'enabled': True
-        }
-        INNOV += 1
-        new_conn2 = {
-            'innov': INNOV,
-            'from': new_node_id,
-            'to': chosen_gene['to'],
-            'wgt': chosen_gene['wgt'],  # second half of new split connection is original weight
-            'enabled': True
-        }
-        INNOV += 1
-        self.conn_genes.append(new_conn1)
-        self.conn_genes.append(new_conn2)
-        # Disable old connection
+        self.make_connection((chosen_gene['from'], new_node_id), wgt=1)
+        self.make_connection((new_node_id, chosen_gene['to']), wgt=chosen_gene['wgt'])
+        # Disable the original connection
         chosen_gene['enabled'] = False
+        
+    def make_connection(self, path, wgt=None):
+        """
+        Appends a connection to self.conn_genes using the 
+        appropriate innovation number (incremented if
+        connection not seen before, otherwise using the
+        innovation number of when it was first made).
+        """
+        global INNOV
+        global CONN_DICT
+        if wgt==None: wgt = np.random.normal() # From the normal distribution
+        if path in CONN_DICT:
+                innov = CONN_DICT[path]
+        else:
+            innov = INNOV
+            CONN_DICT[path] = innov
+            INNOV += 1
+        # add the connection gene.
+        self.conn_genes.append({
+            'innov': innov,
+            'from': path[0],
+            'to': path[1],
+            'wgt': wgt,  
+            'enabled': True
+        })
         
     def split_node(self):
         """
@@ -260,7 +243,7 @@ class Genome(object):
         node_prob = 0.2
         r = random.random()
         if r <= wgt_prob:
-            self.alter_weight
+            self.alter_weight(n_to_alter=2)
         elif r <= wgt_prob + conn_prob:
             self.add_connection()
         elif r <= wgt_prob + conn_prob + node_prob:
@@ -290,19 +273,39 @@ class Genome(object):
         for i in all_innovs:
             if i in self_innovs:
                 if i in other_innovs:
-                    # choose randomly
+                    # Innovation is in both parents so choose randomly
                     opt1 = self.get_conn_gene(i)
                     opt2 = other.get_conn_gene(i)
-                    chosen = opt1.copy() if chooser(self, other) else opt2.copy()
+                    if child.recurrent:
+                        options = [opt1, opt2]
+                    else:
+                        # We need to check if either option would create a cycle in the child
+                        opt1_ok = not( child.creates_cycle((opt1['from'], opt1['to'])) )
+                        opt2_ok = not( child.creates_cycle((opt2['from'], opt2['to'])) )
+                        options = []
+                        if opt1_ok: options.append(opt1)
+                        if opt2_ok: options.append(opt2)
+                    if options:
+                        chosen = random.choice(options).copy()
+                    else:
+                        print('Neither patent gene inherited as either would create a cycle')
+                        continue
                     if not(opt1['enabled']) or not(opt2['enabled']):
                         # Stanley: "there’s a preset chance that an inherited gene is disabled if it is disabled in either parent."
                         if random.random()<0.5: # hard coded 50% chance. not ideal.
                             chosen['enabled'] = False
                 else:
+                    # Innovation is only in the "self" parent
                     chosen = self.get_conn_gene(i).copy()
             elif i in other_innovs:
+                # Innovation is only in the "other" parent
                 chosen = other.get_conn_gene(i).copy()
-            child.conn_genes.append(chosen)
+            # Check the proposed doesn't create a cycle in the child
+            chosen_ok = not( child.creates_cycle((chosen['from'], chosen['to'])) ) if not(child.recurrent) else True
+            if chosen_ok:
+                child.conn_genes.append(chosen)
+            else:
+                print('Gene not inherited as would create cycle')
         # Now create the node genes based on what we need
         conns = child.get_connections(only_enabled=False) # list of (from,to) tuples
         need_nodes = np.unique(list(conns))
@@ -327,13 +330,6 @@ class Genome(object):
         if random.random()<mut_rate:
             child.mutate()
         return child
-      
-    # def zip_align(d1, d2, align_on):
-    #     overlap = [(a,b) for a in d1 for b in d2 if a[align_on]=b[align_on]]
-    #     d1_kw = [x[align_on] for x in d1]
-    #     d2_kw = [x[align_on] for x in d2]
-    #     d1_only = [(a,None) for a in d1 if a[align_on] not in d2_kw]
-    #     d2_only = [(None,b) for b in d2 if b[align_on] not in d1_kw]
 
     def save(self, filename=None):
         if not filename:

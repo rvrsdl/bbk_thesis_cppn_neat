@@ -56,6 +56,27 @@ def create_image2(net, imsize, bias=1):
         img_square = img_raw.T.reshape(size_x, size_y, CHANNELS)
     return img_square
 
+def create_image3(net, imsize, bias=[0.2,0.4,0.6,0.8]):
+    """
+    For use with a bias/noise vector of arbitrary length
+    """
+    size_x = imsize[0]
+    size_y = imsize[1]
+    pixels = size_x*size_y
+    # Generate the coordinate pairs for inputs (normalised)
+    xcoords = np.tile(range(size_x), (size_y,1))
+    ycoords = np.tile(np.array([range(size_y)]).transpose(), (1,size_x))
+    xinp = (xcoords - np.mean(xcoords)) / np.std(xcoords)
+    yinp = (ycoords - np.mean(ycoords)) / np.std(ycoords)
+    dinp = np.sqrt(xinp**2 + yinp**2)
+    noise = np.tile(bias, (pixels,1))
+    img_raw = np.array(net.feedforward((xinp.ravel(), yinp.ravel(), dinp.ravel(), *noise.T)))
+    if CHANNELS==1:
+        img_square = img_raw.T.reshape(size_x, size_y)
+    else:
+        img_square = img_raw.T.reshape(size_x, size_y, CHANNELS)
+    return img_square
+
 def show_image(img):
     if CHANNELS==1:
         plt.imshow(img, cmap='gray', vmin=0, vmax=1)
@@ -63,8 +84,8 @@ def show_image(img):
         plt.imshow(img, vmin=0, vmax=1)
     plt.show()
     
-def create_genome():
-    G = Genome(4, CHANNELS)
+def create_genome(input_nodes=4):
+    G = Genome(input_nodes, CHANNELS)
     # Make it more complex
     for i in range(20): # 30 seems about the minimum to get interesting
         G.add_node()
@@ -80,17 +101,19 @@ def do_run(num=10, imsize=128):
     """
     for i in range(num):
         print("Creating image {:d}".format(i))
+        stem_name = "./output/e{}".format(get_epoch_str())
         G = create_genome()
+        G.save(stem_name+".json")
         net = NNFF(G)
         img = create_image2(net, (imsize,imsize))
         #show_image(img)
-        stem_name = "./output/e{}".format(get_epoch_str())
         imsave("{}_{:d}.png".format(stem_name, imsize), img, vmin=0, vmax=1, cmap='binary')
-        G.save(stem_name+".json")
+        
 
-def upscale_saved(epoch_str, imsize=512):
+def upscale_saved(epoch_str, imsize=512, save=True):
     """
     Load one of the saved networks and produce a hi res image.
+    (Either save it or return as an array.)
     """
     if type(imsize)==int:
         str_imsize = imsize
@@ -101,8 +124,12 @@ def upscale_saved(epoch_str, imsize=512):
     G = Genome.load(stem_name+".json")
     net = NNFF(G)
     img = create_image2(net, imsize)
-    show_image(img)
-    imsave("{}_{}.png".format(stem_name, str_imsize), img, vmin=0, vmax=1, cmap='binary')
+    if save:
+        save_name = "{}_{}.png".format(stem_name, str_imsize)
+        imsave(save_name, img, vmin=0, vmax=1, cmap='binary')
+        return save_name
+    else:
+        return img
     
 def animate(net, imsize=128, filename='test.gif'):
     """

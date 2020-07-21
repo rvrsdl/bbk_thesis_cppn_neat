@@ -3,20 +3,14 @@ Using Tkinter to display/select images.
 """
 import glob
 import random
-#import re
+import re
 
 import tkinter as tk
 from PIL import ImageTk, Image
 import numpy as np
 
-#from cppn import netviz_saved
+import cppn
 
-
-
-# canvas = tk.Canvas(root, width = 300, height = 300)
-# canvas.pack()  
-# img = ImageTk.PhotoImage(Image.open("output/e1594836023_128.png"))  
-# canvas.create_image(128, 128, image=img) 
 
 class ImgGrid(object):
     
@@ -59,15 +53,19 @@ class ImgGrid(object):
             #lab = tk.Label(root, image = imgs[i], borderwidth=2, relief='solid')
             lab = tk.Label(self.root, image = self.imgs[i])
             lab.grid(row = r, column = c, padx = 0, pady = 0)
+            self.labels.append(lab)
+            self.sliders.append(tk.Scale(self.root))
+            self.slider_visible.append(False) # All sliders start off hidden
             #estr = re.findall('e\d*',f)[0]
             #lab.bind("<Button-1>", func = lambda e,r=r,c=c: print("Row={}, Col={}".format(r,c)) )
             #lab.bind("<Button-1>", func = lambda e,l=lab: l.focus_set() )
             #lab.bind("<Button-1>", func = lambda e,l=lab: l.config(text = 'hello') )
-            lab.bind("<Button-1>", func = lambda e,l=lab: self.toggle_border(l) )
+            if from_saved:
+                lab.bind("<Button-1>", func = lambda e,f=f: self.show_hi_res(f) )
+            else:
+                lab.bind("<Button-1>", func = lambda e,l=lab: self.toggle_border(l), add='+' )
+                lab.bind("<Button-1>", func = lambda e,s=self.sliders[i]: s.set(s.get()+10), add='+' )
             lab.bind("<Button-3>", func = lambda e,r=r,c=c: self.toggle_slider(r,c) )
-            self.labels.append(lab)
-            self.sliders.append(tk.Scale(self.root))
-            self.slider_visible.append(False) # All sliders start off hidden
         # Now add some buttons at the bottom
         b1 = tk.Button(self.root, text="Show Scores", command=self.show_all_sliders)
         b1.grid(row=nrows+1, column=ncols-3)
@@ -131,6 +129,17 @@ class ImgGrid(object):
         for s in self.sliders:
             self.scores.append(s.get())
         self.root.destroy() # Closes the window.
+        
+    def show_hi_res(self, img_filename):
+        estr = re.findall('e\d*',img_filename)[0]
+        img_array = cppn.upscale_saved(estr, save=False)
+        img = ImageTk.PhotoImage(image=Image.fromarray(np.uint8(img_array*255),mode='RGB'))
+        window = tk.Toplevel(self.root)
+        window.title(estr)
+        lab = tk.Label(window, image=img)
+        lab.image = img # Annoying tkinter thing. See here: http://effbot.org/pyfaq/why-do-my-tkinter-images-not-appear.htm
+        lab.pack()
+
         
         
         

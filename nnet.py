@@ -29,11 +29,13 @@ class NNFF(object):
             wgts_mat = np.array([[wgts_dict.get((u, v), 0) for u in from_nodes] for v in to_nodes])
             act_func_strs = [g['act_func'] for g in self.genome.node_genes if g['id'] in to_nodes]
             act_funcs = list(map(funcs.get_funcs, act_func_strs))
+            act_args = [g.get('act_args', dict()) for g in self.genome.node_genes if g['id'] in to_nodes]
             layer_dicts.append({
                     'from_nodes': from_nodes.copy(), # create static copy
                     'to_nodes': to_nodes,
                     'wgts_mat': wgts_mat,
-                    'act_funcs': act_funcs
+                    'act_funcs': act_funcs,
+                    'act_args':  act_args
                     })
         return layer_dicts 
     
@@ -77,7 +79,12 @@ class NNFF(object):
             inp_vec = [node_vals[n] for n in linfo['from_nodes']]
             weights = linfo['wgts_mat']
             act_funcs = linfo['act_funcs']
-            out_vec = [f(x) for f, x in zip(act_funcs, np.dot(weights, inp_vec))]
+            act_args = linfo['act_args']
+            out_vec = [f(z, **p) for f, z, p in zip(act_funcs, np.dot(weights, inp_vec), act_args)]
             node_vals.update( {node: val for (node,val) in zip(linfo['to_nodes'],out_vec)} )
-        return [node_vals[n] for n in self.genome.get_node_ids('output')]
-        
+        try:
+            return [node_vals[n] for n in self.genome.get_node_ids('output')]
+        except:
+            self.genome.save(filename='failed.json')
+            raise
+            

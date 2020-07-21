@@ -101,7 +101,8 @@ class Population(object):
         out.append("- Size: {:d}".format(self.popsize))
         out.append("- Mutation Rate: {}".format(self.mutation_rate))
         n_conns = [len(g.get_conn_ids(only_enabled=True)) for g in self.this_gen]
-        n_conn_pctile = [np.percentile(n_conns, p) for p in [25,50,75]]
+        #n_conn_pctile = [np.percentile(n_conns, p) for p in [25,50,75]]
+        n_conn_pctile = [np.min(n_conns), np.median(n_conns), np.max(n_conns)]
         out.append("- Complexity: {}, {}, {}".format(*n_conn_pctile))
         return '\n'.join(out)
 
