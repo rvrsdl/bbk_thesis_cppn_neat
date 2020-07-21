@@ -57,7 +57,7 @@ def get_funcs(func_name):
         'gaussian': gaussian,
         'mod': modz,
         'round': round1dp,
-        #'point': point
+        'point': point
         }
     if func_name=='names':
         # Special useage to get all the opotions.
