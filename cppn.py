@@ -20,6 +20,8 @@ B = fourier.initialize_fourier_mapping_vector(n_features=FFEATS)
 # dn't get randomness (although the feature generation
 # does feel like part of the image-making process
 # rather than the genetic process...)
+# Or actually should belong to the population so all genomes
+# are operating on the same one.
 
 def get_coords(imsize=(64,64)):
     x = np.linspace(-1, 1, imsize[0])

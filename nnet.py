@@ -17,6 +17,7 @@ class NNFF(object):
         self.layers = self.get_layers_ff()
         self.n_layers = len(self.layers)
         self.layer_info = self.get_layer_info()
+        self.n_out = len(self.genome.get_node_ids('output'))
         #self.biases = self.get_biases()
         
     def get_layer_info(self):
