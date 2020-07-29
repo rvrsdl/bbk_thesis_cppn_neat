@@ -30,6 +30,10 @@ class Genome(object):
         self.recurrent = recurrent
         self.verbose = verbose
         self.fitness = 0 # init fitness to zero.
+        self.allowed_act_funcs = ['sigmoid', 'relu', 'tanh', 'sin', 'abs']
+        #self.allowed_act_funcs = ['round','mod']
+        #self.allowed_act_funcs = get_funcs('names')
+        # default could be everything returned by: get_funcs('names')
         # Add the input and output nodes to the list of node_genes
         self.node_genes = []
         for i in range(n_in):
@@ -165,7 +169,7 @@ class Genome(object):
         chosen_gene = random.sample(self.conn_genes, 1)[0]
         # Create the new node
         new_node_id = len(self.node_genes)
-        act_func = random.choice(get_funcs('names'))
+        act_func = random.choice(self.allowed_act_funcs)
         # NB Otoro uses tanh for all but the output layer.
         act_args = create_args(get_funcs(act_func)) # gets some random values for any extra args required
         self.node_genes.append({
@@ -206,6 +210,21 @@ class Genome(object):
             'enabled': True
         })
         
+    def disable_random_conn(self):
+        """
+        A mutation type which disables a random connection gene.
+        Generally have quite a low probability of this type of
+        mutation. But it is useful because it offers a way to
+        reduce complexity. Would we be better off removing the gene
+        entirely rather than disabling?
+        """
+        chosen_gene = random.sample(self.conn_genes, 1)[0]
+        if not(chosen_gene['to'] in self.get_node_ids(layer='output')):
+            # Don't disable a connection to an output because we
+            # need all output nodes to be connected to something for
+            # the feedforward net to work. TODO: think about this.
+            chosen_gene['enabled'] = False
+        
     def split_node(self):
         """
         A new form of mutation invented by meee.
@@ -230,17 +249,20 @@ class Genome(object):
     
     def mutate(self):
         """
-        Could have a method which chooses one of the three mutation types
+        Amethod which chooses one of the three mutation types
         (add_connection, add_node, alter_weight)
         based on probability of each. (Would this be an input or instance variables?)
         For now using fixed probabilities:
             add_connection should have higher probability than add_node
             (because we need more connections than nodes)
             alter_weight should have the highest probability.
+        Would be nice to have these alter with age. Young one want to
+        add nodes/connections fast, older ones whould focus on altering weights.
         """
         wgt_prob = 0.5
         conn_prob = 0.3
         node_prob = 0.2
+        del_prob = 0.0
         r = random.random()
         if r <= wgt_prob:
             self.alter_weight(n_to_alter=2)
@@ -248,6 +270,8 @@ class Genome(object):
             self.add_connection()
         elif r <= wgt_prob + conn_prob + node_prob:
             self.add_node()
+        else:
+            self.disable_random_conn()
     
     def randomise_weights(self):
         """
@@ -292,7 +316,7 @@ class Genome(object):
                         continue
                     if not(opt1['enabled']) or not(opt2['enabled']):
                         # Stanley: "there’s a preset chance that an inherited gene is disabled if it is disabled in either parent."
-                        if random.random()<0.5: # hard coded 50% chance. not ideal.
+                        if random.random()<0.6: # hard coded 60% chance. not ideal.
                             chosen['enabled'] = False
                 else:
                     # Innovation is only in the "self" parent

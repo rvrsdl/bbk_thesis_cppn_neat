@@ -49,7 +49,8 @@ class ImgGrid(object):
                 self.imgs.append( ImageTk.PhotoImage(Image.open(f)) ) #, master=root
             else:
                 a = path_or_arrays[i]
-                self.imgs.append( ImageTk.PhotoImage(image=Image.fromarray(np.uint8(a*255),mode='RGB')) ) #, master=root
+                mode = 'RGB' if a.shape[-1]==3 else 'L'
+                self.imgs.append( ImageTk.PhotoImage(image=Image.fromarray(np.uint8(a*255),mode=mode)) ) #, master=root
             #lab = tk.Label(root, image = imgs[i], borderwidth=2, relief='solid')
             lab = tk.Label(self.root, image = self.imgs[i])
             lab.grid(row = r, column = c, padx = 0, pady = 0)

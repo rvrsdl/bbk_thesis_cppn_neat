@@ -85,6 +85,7 @@ class NNFF(object):
         try:
             return [node_vals[n] for n in self.genome.get_node_ids('output')]
         except:
+            print('Saving failed genome as ./failed.json')
             self.genome.save(filename='failed.json')
             raise
             

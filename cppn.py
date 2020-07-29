@@ -10,8 +10,23 @@ from genome import Genome
 from nnet import NNFF
 from netviz import netviz
 
+import fourier
+
 
 CHANNELS = 3 # 3 for RGB
+FFEATS = 10 # NUmber of fourier features (if using)
+B = fourier.initialize_fourier_mapping_vector(n_features=FFEATS)
+# ^ should probably belong to the genome so we
+# dn't get randomness (although the feature generation
+# does feel like part of the image-making process
+# rather than the genetic process...)
+
+def get_coords(imsize=(64,64)):
+    x = np.linspace(-1, 1, imsize[0])
+    y = np.linspace(-1, 1, imsize[1])
+    xx, yy = np.meshgrid(x, y)
+    coords = np.stack([xx,yy], axis=-1)
+    return coords
 
 def create_image(net, imsize):
     """
@@ -40,16 +55,25 @@ def create_image2(net, imsize, bias=1):
     This is way faster. Do all the pixels at once rather than looping
     Didn't even need to make any change to the nnet code!
     """
+    # size_x = imsize[0]
+    # size_y = imsize[1]
+    # pixels = size_x*size_y
+    # # Generate the coordinate pairs for inputs (normalised)
+    # xcoords = np.tile(range(size_x), (size_y,1))
+    # ycoords = np.tile(np.array([range(size_y)]).transpose(), (1,size_x))
+    # xinp = (xcoords - np.mean(xcoords)) / np.std(xcoords)
+    # yinp = (ycoords - np.mean(ycoords)) / np.std(ycoords)
+    # dinp = np.sqrt(xinp**2 + yinp**2)
+    # img_raw = np.array(net.feedforward((xinp.ravel(), yinp.ravel(), dinp.ravel(), np.tile(bias, pixels))))
+    coords = get_coords(imsize=imsize)
     size_x = imsize[0]
     size_y = imsize[1]
-    pixels = size_x*size_y
-    # Generate the coordinate pairs for inputs (normalised)
-    xcoords = np.tile(range(size_x), (size_y,1))
-    ycoords = np.tile(np.array([range(size_y)]).transpose(), (1,size_x))
-    xinp = (xcoords - np.mean(xcoords)) / np.std(xcoords)
-    yinp = (ycoords - np.mean(ycoords)) / np.std(ycoords)
-    dinp = np.sqrt(xinp**2 + yinp**2)
-    img_raw = np.array(net.feedforward((xinp.ravel(), yinp.ravel(), dinp.ravel(), np.tile(bias, pixels))))
+    pixels = size_x * size_y
+    xcoords= coords[:,:,0].ravel()
+    ycoords= coords[:,:,1].ravel()
+    dcoords = np.sqrt(xcoords**2 + ycoords**2)
+    bias_tile = np.tile(bias, pixels)
+    img_raw = np.array(net.feedforward((xcoords, ycoords, dcoords, bias_tile)))
     if CHANNELS==1:
         img_square = img_raw.T.reshape(size_x, size_y)
     else:
@@ -77,6 +101,22 @@ def create_image3(net, imsize, bias=[0.2,0.4,0.6,0.8]):
         img_square = img_raw.T.reshape(size_x, size_y, CHANNELS)
     return img_square
 
+def create_image_fourier(net, imsize, fourier_map_vec, bias=1):
+    coords = get_coords(imsize=imsize)
+    size_x, size_y = imsize
+    pixels = size_x * size_y
+    feats = fourier.fourier_mapping(coords, fourier_map_vec)
+    n_ffeats = fourier_map_vec.shape[0]
+    feats = feats.reshape(pixels, n_ffeats*2)
+    bias_tile = np.tile(bias, pixels)
+    img_raw = np.array(net.feedforward((*feats.T, bias_tile)))
+    if CHANNELS==1:
+        img_square = img_raw.T.reshape(size_x, size_y)
+    else:
+        img_square = img_raw.T.reshape(size_x, size_y, CHANNELS)
+    return img_square
+    
+
 def show_image(img):
     if CHANNELS==1:
         plt.imshow(img, cmap='gray', vmin=0, vmax=1)
@@ -94,18 +134,25 @@ def create_genome(input_nodes=4):
     G.randomise_weights()
     return G
 
-def do_run(num=10, imsize=128):
+def do_run(num=10, imsize=128, fourier=False, ffeats=10):
     """
     Do a run of eg. 10 images, saving the images (.png) 
     and the corresponding networks (.json) in the output folder.
     """
+    if fourier:
+        in_nodes = (ffeats*2)+1 # pls 1 for bias input
+    else:
+        in_nodes = 4 #
     for i in range(num):
         print("Creating image {:d}".format(i))
         stem_name = "./output/e{}".format(get_epoch_str())
-        G = create_genome()
+        G = create_genome(input_nodes=in_nodes)
         G.save(stem_name+".json")
         net = NNFF(G)
-        img = create_image2(net, (imsize,imsize))
+        if fourier:
+            img = create_image_fourier(net, (imsize,imsize), n_features=ffeats)
+        else:
+            img = create_image2(net, (imsize,imsize))
         #show_image(img)
         imsave("{}_{:d}.png".format(stem_name, imsize), img, vmin=0, vmax=1, cmap='binary')
         

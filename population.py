@@ -8,15 +8,21 @@ import copy
 import random
 import numpy as np
 from genome import Genome
+import fourier
 
 class Population(object):
 
-    def __init__(self, in_layer, out_layer, popsize=36, mutation_rate=0.5):
+    def __init__(self, in_layer, out_layer, popsize=36, mutation_rate=0.5, fourier_feats=None):
         self.n_breed = self.need_to_breed(popsize)
         self.popsize = popsize
         self.in_layer = in_layer
         self.out_layer = out_layer
         self.mutation_rate = mutation_rate
+        if fourier_feats:
+            self.use_fourier = True
+            self.fourier_map_vec = fourier.initialize_fourier_mapping_vector(n_features=fourier_feats)
+        else:
+            self.use_fourier = False
         self.generation = 0
         self.this_gen = self.create_first_gen()
         self.fitness_func = lambda G: random.random() 
@@ -92,7 +98,10 @@ class Population(object):
     def run(self, eval_func, generations=5):
         # eval_func should take a list of genomes and set each of their fitness
         for i in range(generations):
-            eval_func(self.this_gen, self.generation)
+            if self.use_fourier:
+                eval_func(self.this_gen, self.generation, self.fourier_map_vec)
+            else:
+                eval_func(self.this_gen, self.generation)
             self.breed_next_gen()
     
     def __str__(self):
