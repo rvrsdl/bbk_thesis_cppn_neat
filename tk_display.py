@@ -11,6 +11,7 @@ import numpy as np
 
 import cppn
 
+aborted = False
 
 class ImgGrid(object):
     
@@ -29,6 +30,7 @@ class ImgGrid(object):
         self.slider_visible = [] # True if image is showing
         self.scores = []
         self.root.title(title)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         if type(path_or_arrays)==str:
             from_saved = True
@@ -49,8 +51,9 @@ class ImgGrid(object):
                 self.imgs.append( ImageTk.PhotoImage(Image.open(f)) ) #, master=root
             else:
                 a = path_or_arrays[i]
-                mode = 'RGB' if a.shape[-1]==3 else 'L'
-                self.imgs.append( ImageTk.PhotoImage(image=Image.fromarray(np.uint8(a*255),mode=mode)) ) #, master=root
+                #mode = 'RGB' if a.shape[-1]==3 else 'L'
+                #self.imgs.append( ImageTk.PhotoImage(image=Image.fromarray(np.uint8(a*255),mode=mode)) ) #, master=root
+                self.imgs.append( self.to_image_tk(a) )
             #lab = tk.Label(root, image = imgs[i], borderwidth=2, relief='solid')
             lab = tk.Label(self.root, image = self.imgs[i])
             lab.grid(row = r, column = c, padx = 0, pady = 0)
@@ -75,6 +78,10 @@ class ImgGrid(object):
         b3 = tk.Button(self.root, text="Submit", command=self.submit_scores)
         b3.grid(row=nrows+1, column=ncols-1)
             
+    def to_image_tk(self, img) -> ImageTk:
+        mode = 'RGB' if img.channels == 3 else 'L'
+        return ImageTk.PhotoImage(image=Image.fromarray(np.uint8(img.data*255),mode=mode))
+        
     def run(self):
         """
         Shows the grid.
@@ -141,6 +148,14 @@ class ImgGrid(object):
         lab.image = img # Annoying tkinter thing. See here: http://effbot.org/pyfaq/why-do-my-tkinter-images-not-appear.htm
         lab.pack()
 
-        
-        
+    def on_closing(self):
+        """
+        This method gets called if the user closes the window.
+        We want to end the whole iterative selction process
+        """
+        global aborted
+        aborted = True
+        self.root.destroy()
+
+
         

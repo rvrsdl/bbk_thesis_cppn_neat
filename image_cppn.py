@@ -5,6 +5,7 @@ Created on Wed Jul 29 22:33:02 2020
 
 Has stuff to do with processing i
 """
+from __future__ import annotations
 from typing import Tuple
 
 import numpy as np
@@ -35,8 +36,9 @@ class Image:
         else:
             raise Exception("Invalid array shape")
         assert np.max(data) <= 1 and np.min(data) >=0, "Image data must be in range 0-1"
+        self.data = data
             
-    def save(self, filename):
+    def save(self, filename: str) -> None:
         """
         Saves the image.
         """
@@ -44,35 +46,37 @@ class Image:
         imsave(filename, self.data, vmin=0, vmax=1, cmap='gray')
         
     @staticmethod
-    def load(filename):
+    def load(filename: str, channels=3) -> Image:
         """
         Reads data from a saved PNG
         Useful for loading target image
         """
-        return imread(filename)
+        img = imread(filename)
+        img = np.squeeze(img[:,:,:channels])
+        return Image(img)
         # Do we need to rescale values to be 0-1 ??
     
-    def show(self):
+    def show(self) -> None:
         """
         Shows the image in the plots window.
         """
         if self.channels==1:
-            plt.imshow(img, cmap='gray', vmin=0, vmax=1)
+            plt.imshow(self.data, cmap='gray', vmin=0, vmax=1)
         else:
-            plt.imshow(img, vmin=0, vmax=1)
+            plt.imshow(self.data, vmin=0, vmax=1)
         plt.show()
             
 
 class CPPN:
     
-    def __init__(self, net: NNFF, fourier_map_vec = None):
+    def __init__(self, net: NNFF, fourier_vec : np.ndarray = None):
         self.net = net
         self.channels = net.n_out
-        self.fourier_map_vec = fourier.fourier_map_vec
-        if fourier_map_vec:
-            self.bias_vec_len = net.n_in - len(fourier_map_vec)           
-        else:
+        self.fourier_vec = fourier_vec
+        if fourier_vec is None:
             self.bias_vec_len = net.n_in - 3
+        else:
+            self.bias_vec_len = net.n_in - len(fourier_vec)*2           
     
     def get_coords(self, imsize: Dims) -> np.ndarray: 
         x = np.linspace(-1, 1, imsize[0])
@@ -81,31 +85,31 @@ class CPPN:
         coords = np.stack([xx,yy], axis=-1)
         return coords
     
-    def create_image(self, imsize: Dims = (128,128), 
-                     bias=np.tile(1,self.bias_vec_len)) -> Image:
+    def create_image(self, imsize: Dims = (128,128), bias=None) -> Image:
         """
         Single-pass image creation which should be able to cope with
         vanilla or fourier approach, and can have a bias vector of any length.
         """
+        if bias is None:
+            bias = np.tile(1, self.bias_vec_len)
         assert len(bias)==self.bias_vec_len, "Bias vector was an unexpected size."
         coords = self.get_coords(imsize)
         pixels = imsize[0]*imsize[1]
         bias_tile = np.tile(bias, (pixels,1)) # The bias (scalar or vector must go in for every pixel)
-        if self.fourier_map_vec:
-            # Use fourier features rather than coordinates as inputs to the neural net.
-            feats = fourier_mapping(coords, self.fourier_map_vec)
-            num_ffeats = self.fourier_map_vec.shape[0]
-            feats = feats.reshape(pixels, n_ffeats*2) # times two because we have sin and cos features
-            img_raw = np.array(net.feedforward((*feats.T, *bias_tile.T)))
-        else:
+        if self.fourier_vec is None:
             # Vanilla CPPN with coordinate inutes to neural network
             xcoords= coords[:,:,0].ravel()
             ycoords= coords[:,:,1].ravel()
             dcoords = np.sqrt(xcoords**2 + ycoords**2)
-            img_raw = np.array(net.feedforward((xcoords, ycoords, dcoords, *bias_tile.T)))
-        if self.channels==1:
-            img_square = img_raw.T.reshape(size_x, size_y)
+            img_raw = np.array(self.net.feedforward((xcoords, ycoords, dcoords, *bias_tile.T)))
         else:
-            img_square = img_raw.T.reshape(size_x, size_y, self.channels)
+            # Use fourier features rather than coordinates as inputs to the neural net.
+            feats = fourier.fourier_mapping(coords, self.fourier_vec)
+            n_ffeats = self.fourier_vec.shape[0]
+            feats = feats.reshape(pixels, n_ffeats*2) # times two because we have sin and cos features
+            img_raw = np.array(self.net.feedforward((*feats.T, *bias_tile.T)))
+        if self.channels==1:
+            img_square = img_raw.T.reshape(imsize[0], imsize[1])
+        else:
+            img_square = img_raw.T.reshape(imsize[0], imsize[1], self.channels)
         return Image(img_square)
-            

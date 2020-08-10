@@ -41,14 +41,15 @@ def get_coords(img_size=(64,64)):
     return coords
     
 
-def initialize_fourier_mapping_vector(n_features=256, sigma=10):
+def initialize_fourier_mapping_vector(n_features: int = 256, 
+                                      sigma: float = 10.0) -> np.ndarray:
   dims = 2
   #B = tf.random.normal((m, d)) * sigma
   B = np.random.normal(size=(n_features,dims), scale=sigma)
   return B
 
 
-def fourier_mapping(coords, B):
+def fourier_mapping(coords: np.ndarray, B: np.ndarray) -> np.ndarray:
   """
   Preprocess each coordinate — scaled from [0, 1) — by converting each
   coordinate to a random fourier feature, as determined by a matrix with values

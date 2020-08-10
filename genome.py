@@ -1,4 +1,4 @@
-from __future__ import annotations # enables type hints
+from __future__ import annotations # enables type hints of self object
 import random
 import datetime
 import json
@@ -30,9 +30,9 @@ class Genome(object):
         self.recurrent = recurrent
         self.verbose = verbose
         self.fitness = 0 # init fitness to zero.
-        self.allowed_act_funcs = ['sigmoid', 'relu', 'tanh', 'sin', 'abs']
+        #self.allowed_act_funcs = ['sigmoid', 'relu', 'tanh', 'sin', 'abs']
         #self.allowed_act_funcs = ['round','mod']
-        #self.allowed_act_funcs = get_funcs('names')
+        self.allowed_act_funcs = get_funcs('names')
         # default could be everything returned by: get_funcs('names')
         # Add the input and output nodes to the list of node_genes
         self.node_genes = []
@@ -224,6 +224,8 @@ class Genome(object):
             # need all output nodes to be connected to something for
             # the feedforward net to work. TODO: think about this.
             chosen_gene['enabled'] = False
+            # Hmm more complicated. Can't do anything
+            # that will cut off output node.
         
     def split_node(self):
         """
@@ -261,8 +263,8 @@ class Genome(object):
         """
         wgt_prob = 0.5
         conn_prob = 0.3
-        node_prob = 0.2
-        del_prob = 0.0
+        node_prob = 0.1
+        del_prob = 0.1
         r = random.random()
         if r <= wgt_prob:
             self.alter_weight(n_to_alter=2)
