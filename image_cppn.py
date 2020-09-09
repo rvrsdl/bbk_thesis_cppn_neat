@@ -65,6 +65,21 @@ class Image:
         else:
             plt.imshow(self.data, vmin=0, vmax=1)
         plt.show()
+        
+    def diff(self, shift=1) -> Image:
+        """
+        Subtracts pixel values from vals shifted one left and one down
+        """
+        # np.roll goes round the back which isn't really relevant so just put zero diff for those pixels
+        abs_diff = np.abs(self.data - np.roll(self.data, shift=shift, axis=(0,1)))
+        if shift>0:
+            abs_diff[:shift,:] = 0
+            abs_diff[:,:shift] = 0
+        else:
+            # In case of negative shift
+            abs_diff[shift:,:] = 0
+            abs_diff[:,shift:] = 0
+        return Image(abs_diff)
             
 
 class CPPN:

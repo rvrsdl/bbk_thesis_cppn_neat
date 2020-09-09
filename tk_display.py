@@ -15,7 +15,7 @@ aborted = False
 
 class ImgGrid(object):
     
-    def __init__(self, path_or_arrays, n_imgs=35, nrows=5, ncols=7, title="Image Grid"):
+    def __init__(self, path_or_arrays, text=None, n_imgs=35, nrows=5, ncols=7, title="Image Grid", default_scores=None):
         """
         Produces a grid of images from saved PNG files.
         Pass in a path name (with wildcards eg. output/*.png)
@@ -44,6 +44,8 @@ class ImgGrid(object):
         else:
             raise ValueError("Unknown input")
         self.n_imgs = n_imgs
+        if text is None:
+            text = np.tile(None, n_imgs) # So that we can subscript it.
         for i in range(n_imgs):
             r, c = divmod(i, self.ncols)
             if from_saved:
@@ -55,10 +57,13 @@ class ImgGrid(object):
                 #self.imgs.append( ImageTk.PhotoImage(image=Image.fromarray(np.uint8(a*255),mode=mode)) ) #, master=root
                 self.imgs.append( self.to_image_tk(a) )
             #lab = tk.Label(root, image = imgs[i], borderwidth=2, relief='solid')
-            lab = tk.Label(self.root, image = self.imgs[i])
+            lab = tk.Label(self.root, image=self.imgs[i], text=text[i], compound='top')
             lab.grid(row = r, column = c, padx = 0, pady = 0)
             self.labels.append(lab)
-            self.sliders.append(tk.Scale(self.root))
+            slider = tk.Scale(self.root)
+            if default_scores is not None:
+                slider.set(int(round(default_scores[i]))) # Round because it must be an int.
+            self.sliders.append(slider)
             self.slider_visible.append(False) # All sliders start off hidden
             #estr = re.findall('e\d*',f)[0]
             #lab.bind("<Button-1>", func = lambda e,r=r,c=c: print("Row={}, Col={}".format(r,c)) )
@@ -138,6 +143,17 @@ class ImgGrid(object):
             self.scores.append(s.get())
         self.root.destroy() # Closes the window.
         
+    # Obsolete because doing this in init.
+    # def set_sliders(self, scores):
+    #     """
+    #     Sets all the sliders to the specified scores.
+    #     For use with an automatic evaluator when in debug
+    #     mode so that you can see the scores it has assigned
+    #     each image.
+    #     """
+    #     for slider, score in zip(self.sliders, scores):
+    #         slider.set(score)
+            
     def show_hi_res(self, img_filename):
         estr = re.findall('e\d*',img_filename)[0]
         img_array = cppn.upscale_saved(estr, save=False)

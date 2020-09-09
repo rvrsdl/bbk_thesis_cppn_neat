@@ -61,3 +61,18 @@ different.
 - More useful to capture something about the structure of the image.
 - So could put it through a CNN and measure difference of output vectors.
 - But CNN not likely to be good without training (so could train on real images orr..?)
+
+Notes on pretrained tensorflow assesor:
+- Using TF network pretrained on ImageNet (1001 classes of image)
+- Plan is simply to use max probability as our fitness rating (ie. 
+we don't really care what an image looks like as long as it looks 
+like something.)
+- But in fact this quickly converges on getting very hgh probabilities
+for classes like "jellyfish" or "velvet". And evolution then pretty
+much stops (any mutations introducing a new thing are quickly quashed)
+- So this is where we need speciation, and the class labels provide an
+easy means to achieve it.
+- For starters I plan just to boost the rating of any image where the
+"winning" class is one we haven't seen before.
+- This works ok for rewarding rarity but we still tend to get stuck with 
+a lack of diversity. So speciation is going to become necessary.

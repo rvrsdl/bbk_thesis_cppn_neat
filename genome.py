@@ -33,6 +33,7 @@ class Genome(object):
         #self.allowed_act_funcs = ['sigmoid', 'relu', 'tanh', 'sin', 'abs']
         #self.allowed_act_funcs = ['round','mod']
         self.allowed_act_funcs = get_funcs('names')
+        #self.allowed_act_funcs = ['tanh']
         # default could be everything returned by: get_funcs('names')
         # Add the input and output nodes to the list of node_genes
         self.node_genes = []
@@ -44,7 +45,8 @@ class Genome(object):
                 'act_func': None,
             })
         for i in range(n_in, n_in+n_out):
-            act_func = random.choice(['gaussian','sigmoid'])
+            #act_func = random.choice(['gaussian','sigmoid'])
+            act_func = 'sigmoid'
             act_args = create_args(get_funcs(act_func))
             self.node_genes.append({
                 'id': i,
@@ -218,14 +220,17 @@ class Genome(object):
         reduce complexity. Would we be better off removing the gene
         entirely rather than disabling?
         """
-        chosen_gene = random.sample(self.conn_genes, 1)[0]
-        if not(chosen_gene['to'] in self.get_node_ids(layer='output')):
-            # Don't disable a connection to an output because we
-            # need all output nodes to be connected to something for
-            # the feedforward net to work. TODO: think about this.
-            chosen_gene['enabled'] = False
-            # Hmm more complicated. Can't do anything
-            # that will cut off output node.
+        # We need to not end up with any "stranded" nodes
+        # ie. nodes not in the input layer which don't have iny inputs.
+        # I thiiink any conn where the 'to' node has other inputs is safe to delete.
+        # That way we shouldn't get any stranded nodes.
+        # So we might need to go through all the connections to find one that is ok to delete.
+        chosen_genes = random.sample(self.conn_genes, len(self.conn_genes))
+        for cg in chosen_genes:
+            if np.sum( np.array([t[1] for t in self.get_connections()]) == cg['to']) >=2:
+                cg['enabled'] = False
+                break
+        if self.verbose: print('No disable-able connection found')
         
     def split_node(self):
         """

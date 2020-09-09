@@ -88,3 +88,15 @@ net = NNFF(G)
 noise = np.random.normal(size=noise_len)
 img = cppn.create_image3(net, imsize=(128,128), bias=noise)
 cppn.show_image(img)
+
+# Examining the layers
+import numpy as np
+from genome import Genome
+import cppn
+from nnet import NNFF
+from netviz import netviz
+G = Genome(4,3)
+G.mutate()
+G.mutate()
+netviz(G)
+net = NNFF(G)
