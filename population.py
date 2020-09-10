@@ -20,8 +20,8 @@ class Population(object):
         self.in_layer = in_layer
         self.out_layer = out_layer
         self.mutation_rate = mutation_rate
-        self.generation = 0
-        self.this_gen = self.create_first_gen()
+        self.generation = 0 
+        self.this_gen = None
         self.fitness_func = lambda G: random.random() 
         # would be cool to be able to drop in here either 
         # interavtive user selection func or auto fitness func.
@@ -34,13 +34,14 @@ class Population(object):
         innovation numbers are shared.
         """
         seed = Genome(self.in_layer, self.out_layer)
-        generation = [copy.deepcopy(seed) for i in range(self.popsize)]
+        first_gen = [copy.deepcopy(seed) for i in range(self.popsize)]
         # To get a bit of diversity in the initial population we will 
         # give each one an extra node, and randomise the weights.
-        for g in generation:
+        for g in first_gen:
             g.add_node()
             g.randomise_weights()
-        return generation
+        self.this_gen = first_gen
+        self.generation = 1
             
     def update_pop_fitness(self):
         for G in self.this_gen:
@@ -99,8 +100,11 @@ class Population(object):
                 print('Ending run early...')
                 break
             else:
+                if self.generation==0:
+                    self.create_first_gen()
+                else:
+                    self.breed_next_gen()
                 evaluator.run(self.this_gen)
-                self.breed_next_gen()
         self.this_gen.sort(key= lambda g: g.fitness, reverse=True)
          
     def __str__(self):

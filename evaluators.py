@@ -84,7 +84,9 @@ class PixelDiffEvaluator(AbstractEvaluator):
         if self.visible:
             # WARNING: by keeping the return variable we are allowing the user to modify
             # the automatic ratings.
-            ratings = self.show_grid(imgs, default_scores=ratings)
+            user_ratings = self.show_grid(imgs, default_scores=ratings)
+            if user_ratings:
+                ratings = user_ratings # WARNING: this allows user to modify default ratings
         # Now set the genome fitnesses according to the ratings
         for g,r in zip(genomes, ratings):
             g.fitness = r
@@ -209,10 +211,10 @@ class ImageNetEvaluator(AbstractEvaluator):
         ratings = best_probs * multiplier * 100 # *100 because ratings need to be in range 0-100
         # TODO would be nice to display the prob and labels on the image grid.
         if self.visible:
-            # WARNING: by keeping the return variable we are allowing the user to modify
-            # the automatic ratings.
             text = ['{:.12}: {:.0f}%'.format(l,p*100) for (l,p) in zip(best_labels, best_probs)]
-            ratings = self.show_grid(imgs, text=text, default_scores=ratings)
+            user_ratings = self.show_grid(imgs, text=text, default_scores=ratings)
+            if user_ratings:
+                ratings = user_ratings # WARNING: this allows user to modify default ratings
         # Now set the genome fitnesses according to the ratings
         for g,r in zip(genomes, ratings):
             g.fitness = r

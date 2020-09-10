@@ -29,7 +29,7 @@ else:
     in_layer = 3 + bias_len
     fmv = None
 
-pop = Population(popsize=36, in_layer=in_layer, out_layer=channels)
+pop = Population(popsize=105, mutation_rate=0.8, in_layer=in_layer, out_layer=channels)
 if auto==0:
     evaluator = InteractiveEvaluator(fourier_map_vec=fmv, bias_vec=bias_vec)
 elif auto==1:
@@ -37,15 +37,22 @@ elif auto==1:
     duck = Image.load('duck_bw_128.png', channels=1)
     evaluator = PixelPctEvaluator(target_img=None, bias_vec=bias_vec, fourier_map_vec=fmv, visible=True)
 elif auto==2:
-    evaluator = ImageNetEvaluator(channels=channels, fade_factor = 0.98, visible=True)
+    evaluator = ImageNetEvaluator(channels=channels, fade_factor = 0.98, bias_vec=bias_vec, fourier_map_vec=fmv, visible=False)
 pop.run(evaluator, generations=50)
 
 # After the run we have the sorted best genomes.
-# Look at the best one:
-g = pop.this_gen[2]
-cppn = CPPN(NNFF(g), fmv)
-img = cppn.create_image((128,128))
-img.show()
+# Look at the best 28;
+import tk_display as td
+imgs = []
+scores = []
+for i in range(28):
+    g = pop.this_gen[i]
+    cppn = CPPN(NNFF(g), fmv)
+    imgs.append( cppn.create_image((128,128), bias=bias_vec) )
+    scores.append(g.fitness)
+grd = td.ImgGrid(imgs, n_imgs=28, nrows=4, title="Final Generation", default_scores=scores)
+grd.run()
+
 
 # 
 # from image_cppn import Image

@@ -75,4 +75,7 @@ easy means to achieve it.
 - For starters I plan just to boost the rating of any image where the
 "winning" class is one we haven't seen before.
 - This works ok for rewarding rarity but we still tend to get stuck with 
-a lack of diversity. So speciation is going to become necessary.
+a lack of diversity. So speciation is going to become necessary. The problem
+is that whenever a new class is introduced, it gets a very high rating and the
+population rapidly moves completely towards that class, then the ratings fall
+quickly until  new class is introduced. So we end up just flippling between classes
