@@ -14,7 +14,7 @@ import evaluators
 
 class Population(object):
 
-    def __init__(self, in_layer, out_layer, popsize=36, mutation_rate=0.5):
+    def __init__(self, in_layer, out_layer, popsize=36, mutation_rate=0.5, hall_of_fame=None):
         self.n_breed = self.need_to_breed(popsize)
         self.popsize = popsize
         self.in_layer = in_layer
@@ -22,11 +22,9 @@ class Population(object):
         self.mutation_rate = mutation_rate
         self.generation = 0 
         self.this_gen = None
-        self.fitness_func = lambda G: random.random() 
-        # would be cool to be able to drop in here either 
-        # interavtive user selection func or auto fitness func.
-        # for now as a placeholder we'll just use a random fitness.
-        
+        self.hall_of_fame = hall_of_fame
+        self.breed_method = 'selected' #, 'total', 'species'
+
     def create_first_gen(self):
         """
         Initialise the population with N members in the first generation.
@@ -39,13 +37,10 @@ class Population(object):
         # give each one an extra node, and randomise the weights.
         for g in first_gen:
             g.add_node()
+            g.add_connection()
             g.randomise_weights()
         self.this_gen = first_gen
         self.generation = 1
-            
-    def update_pop_fitness(self):
-        for G in self.this_gen:
-            G.fitness = self.fitness_func(G)
     
     def breed_next_gen(self):
         """
@@ -60,13 +55,68 @@ class Population(object):
         TODO: implement species so that breeding only takes place
         between members of the same species.
         """
-        self.this_gen.sort(key= lambda g: g.fitness, reverse=True)
-        selected = self.this_gen[:self.n_breed]
-        pairings = itertools.combinations(selected,2) # finds all possible combos of 2
-        offspring = [p1.crossover(p2, mut_rate=self.mutation_rate) for p1, p2 in pairings]
+        if self.breed_method == 'species':
+            species = self.species_divide()
+            groups = list(species.values())
+            n_species = len(species)
+            mixed_alloc = round(self.mixed_pct * self.popsize)
+            pure_alloc = self.popsize - mixed_alloc
+            raw_spec_alloc = pure_alloc / n_species
+            n_ceil = self.popsize - (np.floor(raw_spec_alloc) * n_species)
+            n_floor = n_species - n_ceil
+            group_allocs = np.concatenate([np.tile(np.ceil(raw_spec_alloc), n_ceil), np.tile(np.floor(raw_spec_alloc), n_floor)])
+            for grp, n in zip(groups, group_allocs):
+                print('TODO')
+        elif self.breed_method == 'total':
+            # Breeding as many as we need to totally renew the population
+            self.this_gen.sort(key= lambda g: g.get_fitness(), reverse=True)
+            selected = self.this_gen[:self.n_breed]
+            pairings = itertools.combinations(selected,2) # finds all possible combos of 2
+            offspring = [p1.crossover(p2, mut_rate=self.mutation_rate) for p1, p2 in pairings]
+        elif self.breed_method == 'selected':
+            # Breed only from the selected individuals (fitness>10)
+            selected = [g for g in self.this_gen if g.get_fitness()>=10]
+            selected.sort(key= lambda g: g.get_fitness(), reverse=True)
+            if len(selected)<2:
+                print('WARNING: You must select at least two individuals')
+                print('Please try again')
+                return None
+                # ie. keep this_gen the same and don't increase the
+                # generation numbers, so the user can try again.
+            pairings = list(itertools.combinations(selected,2)) # finds all possible combos of 2
+            offspring = selected # keep the chosen ones
+            for i in range(self.popsize - len(selected)):
+                idx = i % len(pairings) # so we can go round again if we need to
+                p1 = pairings[idx][0]
+                p2 = pairings[idx][1]
+                offspring.append( p1.crossover(p2, mut_rate=self.mutation_rate) )
+                
+        # Set this_gen to the offspring and increment the generation number. 
         self.this_gen = offspring
         self.generation += 1
         print(self)
+    
+    def species_divide(self):
+        """
+        Puts members of the current population in a dictionary
+        whose keys are the species names.
+        Genomes with no species go into the "?" group.
+        """
+        [(pair, pair[0]*pair[1]) for pair in itertools.combinations(range(1,6),2)]
+        k = list(itertools.combinations(range(1,6),2))
+        k.sort(key = lambda p: max(p)+min(p)/100)
+        species_dict = dict()
+        for g in self.this_gen:
+            s = g.metadata.get('species','?')
+            if s in species_dict:
+                species_dict[s].append(g)
+            else:
+                species_dict[s] = [g]
+        # now sort by fitness within species
+        for s in species_dict.values():
+            s.sort(key= lambda g: g.get_fitness(), reverse=True)
+        return species_dict
+    
     
     def need_to_breed(self, popsize):
         """
@@ -104,8 +154,10 @@ class Population(object):
                     self.create_first_gen()
                 else:
                     self.breed_next_gen()
-                evaluator.run(self.this_gen)
-        self.this_gen.sort(key= lambda g: g.fitness, reverse=True)
+                evaluator.run(self.this_gen, self.generation)
+                if self.hall_of_fame:
+                    self.hall_of_fame.cache(self) # put any outstanding members of theis generation in the hall of fame.
+        self.this_gen.sort(key= lambda g: g.get_fitness(), reverse=True)
          
     def __str__(self):
         out = ["Population stats:"]

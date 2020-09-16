@@ -116,6 +116,7 @@ class CPPN:
             xcoords= coords[:,:,0].ravel()
             ycoords= coords[:,:,1].ravel()
             dcoords = np.sqrt(xcoords**2 + ycoords**2)
+            #dcoords = np.tile(1, xcoords.shape) # TEMP!!
             img_raw = np.array(self.net.feedforward((xcoords, ycoords, dcoords, *bias_tile.T)))
         else:
             # Use fourier features rather than coordinates as inputs to the neural net.

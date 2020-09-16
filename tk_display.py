@@ -58,7 +58,7 @@ class ImgGrid(object):
                 self.imgs.append( self.to_image_tk(a) )
             #lab = tk.Label(root, image = imgs[i], borderwidth=2, relief='solid')
             lab = tk.Label(self.root, image=self.imgs[i], text=text[i], compound='top')
-            lab.grid(row = r, column = c, padx = 0, pady = 0)
+            lab.grid(row = r, column = c, padx = 1, pady = 1)
             self.labels.append(lab)
             slider = tk.Scale(self.root)
             if default_scores is not None:
@@ -72,16 +72,19 @@ class ImgGrid(object):
             if from_saved:
                 lab.bind("<Button-1>", func = lambda e,f=f: self.show_hi_res(f) )
             else:
-                lab.bind("<Button-1>", func = lambda e,l=lab: self.toggle_border(l), add='+' )
+                #lab.bind("<Button-1>", func = lambda e,l=lab: self.toggle_border(l), add='+' )
                 lab.bind("<Button-1>", func = lambda e,s=self.sliders[i]: s.set(s.get()+10), add='+' )
-            lab.bind("<Button-3>", func = lambda e,r=r,c=c: self.toggle_slider(r,c) )
+                lab.bind("<Button-3>", func = lambda e,s=self.sliders[i]: s.set(s.get()-10), add='+' )
         # Now add some buttons at the bottom
-        b1 = tk.Button(self.root, text="Show Scores", command=self.show_all_sliders)
-        b1.grid(row=nrows+1, column=ncols-3)
+        b3 = tk.Button(self.root, text="Zero Scores", command=self.zero_scores)
+        b3.grid(row=nrows+1, column=ncols-4)
+        b3 = tk.Button(self.root, text="Show Scores", command=self.show_all_sliders)
+        b3.grid(row=nrows+1, column=ncols-3)
         b2 = tk.Button(self.root, text="Hide Scores", command=self.hide_all_sliders)
         b2.grid(row=nrows+1, column=ncols-2)
-        b3 = tk.Button(self.root, text="Submit", command=self.submit_scores)
-        b3.grid(row=nrows+1, column=ncols-1)
+        b1 = tk.Button(self.root, text="Submit", command=self.submit_scores)
+        b1.grid(row=nrows+1, column=ncols-1)
+        self.check_scores_apply_border(repeat=False)
             
     def to_image_tk(self, img) -> ImageTk:
         mode = 'RGB' if img.channels == 3 else 'L'
@@ -93,6 +96,7 @@ class ImgGrid(object):
         When the user clicks submit the window is closed and 
         the scores are returned.
         """
+        self.root.after(500, self.check_scores_apply_border)
         self.root.mainloop()
         #input('Press enter...')
         return self.scores
@@ -118,6 +122,27 @@ class ImgGrid(object):
             r, c = divmod(i, self.ncols)
             self.sliders[i].grid_forget()
             self.slider_visible[i] = False
+            
+    def zero_scores(self):
+        """
+        Reset all scores to zero.
+        """
+        for s in self.sliders:
+            s.set(0)
+            
+    def check_scores_apply_border(self, thresh=10, repeat=True):
+        """
+        This will be called during mainloop every second
+        to check if a score has been raised above the threshold
+        (10) by the user, and if so to run on the border.
+        """
+        for s, l in zip(self.sliders, self.labels):
+            if s.get() >= thresh:
+                l.config(borderwidth=2, relief='solid')
+            else:
+                l.config(borderwidth=0)
+        if repeat:
+            self.root.after(500, self.check_scores_apply_border)
         
     def toggle_border(self, lab):
         """
@@ -131,7 +156,7 @@ class ImgGrid(object):
             lab.config(borderwidth=0)
         else:
             lab.config(borderwidth=2, relief='solid')
-            # To remov image and set text do:  image='', text='hello'
+            # To remove image and set text do:  image='', text='hello'
 
     def submit_scores(self):
         """

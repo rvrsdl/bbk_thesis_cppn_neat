@@ -2,6 +2,7 @@ from __future__ import annotations # enables type hints of self object
 import random
 import datetime
 import json
+import yaml
 
 import numpy as np
 
@@ -10,6 +11,9 @@ from funcs import get_funcs, create_args
 INNOV = 0
 CONN_DICT = dict()
 #NODE_DICT = dict()
+
+with open('config.yaml','r') as f:
+    CONFIG = yaml.safe_load(f)
 
 class Genome(object):
     """
@@ -29,7 +33,8 @@ class Genome(object):
         self.n_out = n_out
         self.recurrent = recurrent
         self.verbose = verbose
-        self.fitness = 0 # init fitness to zero.
+        #self.fitness = 0 
+        self.metadata = {'fitness': 0} # For any extra info we may want to attach to the genome. Init fitness to zero.
         #self.allowed_act_funcs = ['sigmoid', 'relu', 'tanh', 'sin', 'abs']
         #self.allowed_act_funcs = ['round','mod']
         self.allowed_act_funcs = get_funcs('names')
@@ -254,6 +259,13 @@ class Genome(object):
             # peturb by a number selected from the normal distribution.
             conn['wgt'] += float(np.random.randn(1))
     
+    def flip_weight(self, n_to_flip=1):
+        chosen = random.sample(self.conn_genes, n_to_flip)
+        for conn in chosen:
+            # flip the sign
+            conn['wgt'] = -conn['wgt']
+        
+    
     def mutate(self):
         """
         Amethod which chooses one of the three mutation types
@@ -266,19 +278,19 @@ class Genome(object):
         Would be nice to have these alter with age. Young one want to
         add nodes/connections fast, older ones whould focus on altering weights.
         """
-        wgt_prob = 0.5
-        conn_prob = 0.3
-        node_prob = 0.1
-        del_prob = 0.1
-        r = random.random()
-        if r <= wgt_prob:
-            self.alter_weight(n_to_alter=2)
-        elif r <= wgt_prob + conn_prob:
-            self.add_connection()
-        elif r <= wgt_prob + conn_prob + node_prob:
-            self.add_node()
-        else:
-            self.disable_random_conn()
+
+        func_dict = {'alter_wgt': self.alter_weight,
+                     'flip_wgt': self.flip_weight,
+                     'add_connection': self.add_connection,
+                     'add_node': self.add_node,
+                     'disable_connection': self.disable_random_conn}
+        mutation_types = CONFIG['mutation_types']
+        options = [func_dict[m['func']] for m in mutation_types]
+        probs = [m['prob'] for m in mutation_types]
+        chosen_mutation = np.random.choice(options, p=probs)
+        chosen_mutation() # Execute the chosen mutation.
+
+        
     
     def randomise_weights(self):
         """
@@ -358,9 +370,17 @@ class Genome(object):
                 assert n in have_nodes, "Node {} isn't in child".format(n)
                 continue
             child.node_genes.append(chosen.copy())
-        if random.random()<mut_rate:
+        while random.random()<mut_rate:
+            # TODO this was an if. HAve made a while. THink about this.
             child.mutate()
         return child
+    
+    def get_fitness(self, raw=False):
+        if raw:
+            # Get raw_fitness or if it doesn't exist return fitness
+            return self.metadata.get('raw_fitness', self.metadata.get('fitness'))
+        else:
+            return self.metadata.get('fitness')
 
     def save(self, filename=None):
         if not filename:

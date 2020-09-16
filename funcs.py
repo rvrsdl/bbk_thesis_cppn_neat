@@ -34,8 +34,8 @@ def modz(z, divisor=1, thresh=0.25):
 def round1dp(z):
     return np.round(z, decimals=1)
 
-def point(z, p=1):
-    return (np.abs(z-p)<0.05).astype(float)
+def point(z, p=0, thresh=0.05):
+    return (np.abs(z-p)<thresh).astype(float)
 
 # Wrapping some numpy functions so that my create_args works
 def tanhz(z):
@@ -57,7 +57,7 @@ def get_funcs(func_name):
         'gaussian': gaussian,
         'mod': modz,
         'round': round1dp,
-        #'point': point
+        'point': point
         }
     if func_name=='names':
         # Special useage to get all the opotions.
@@ -85,7 +85,7 @@ def peturb(param):
     But becuase certain args must meet certain requirements
     (eg. sigma in gaussian() must be positive), the args
     in the original functions can be annotated to indicate
-    these conditions. This functioninterprets those annotations
+    these conditions. This function interprets those annotations
     and peturbs accordingly.
     """
     ann = param.annotation
@@ -93,12 +93,12 @@ def peturb(param):
         ann = 'normal'
     if type(ann)==str:
         if ann == 'normal':
-            return param.default+np.random.normal()
+            return param.default + np.random.normal()
         elif ann == 'positive':
-            return abs(param.default+np.random.normal())
+            return abs(param.default + np.random.normal())
     elif type(ann)==tuple:
         # Get a number from uniform random distribution
         # bounded by values in the annotation tuple.
         return np.random.uniform(*ann)
     else:
-        print('someting wrong')
+        print('Unrecognised function annotation.')
