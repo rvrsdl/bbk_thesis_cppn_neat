@@ -42,6 +42,7 @@ class Genome(object):
         self._activation_funcs = kwargs.get('activation_funcs', defaults.get('activation_funcs'))
         self._output_funcs = kwargs.get('output_funcs', defaults.get('output_funcs'))
         self._mutation_types = kwargs.get('mutation_types', defaults.get('mutation_types'))
+        self._disable_prob = kwargs.get('disable_prob', defaults.get('disable_prob'))
         
         # Create a list of input and output node genes
         self._node_genes = []
@@ -69,7 +70,8 @@ class Genome(object):
                 {'func': 'add_connection', 'prob': 0.3},
                 {'func': 'add_node', 'prob': 0.1},
                 {'func': 'disable_connection', 'prob': 0.1}
-            ]
+            ],
+            'disable_prob': 0.6
         }
         return settings
     
@@ -330,9 +332,11 @@ class Genome(object):
         Creates an offspring genome from this and another parent.
         Some of the offsprings genes are mutated (controlled by the mut_rate
         parameter).
+        The mut_rate should be between 0 and 1. There is an exponentially
+        decreasing chance of multiple mutations:  if mut_rate is 0.5 then the 
+        chance of one mutation is 0.5, of two is 0.25, of three is 0.125 etc.
         """
-        # Create a child genome with no connections and the same settings
-        child = Genome(self.n_in, self.n_out, init_conns=False, recurrent=self.recurrent, verbose=self.verbose)
+        child = self._empty() # Create a child genome with no connections and the same settings as this one
         # Choose and add the connection genes
         self_innovs = self.get_conn_ids()
         other_innovs = other.get_conn_ids()
@@ -347,19 +351,19 @@ class Genome(object):
                         options = [opt1, opt2]
                     else:
                         # We need to check if either option would create a cycle in the child
-                        opt1_ok = not( child.creates_cycle((opt1['from'], opt1['to'])) )
-                        opt2_ok = not( child.creates_cycle((opt2['from'], opt2['to'])) )
+                        opt1_ok = not( child._check_for_cycle((opt1['from'], opt1['to'])) )
+                        opt2_ok = not( child._check_for_cycle((opt2['from'], opt2['to'])) )
                         options = []
                         if opt1_ok: options.append(opt1)
                         if opt2_ok: options.append(opt2)
                     if options:
                         chosen = random.choice(options).copy()
                     else:
-                        print('Neither patent gene inherited as either would create a cycle')
+                        print('Neither parent gene inherited as either would create a cycle')
                         continue
                     if not(opt1['enabled']) or not(opt2['enabled']):
                         # Stanley: "there’s a preset chance that an inherited gene is disabled if it is disabled in either parent."
-                        if random.random()<0.6: # hard coded 60% chance. not ideal.
+                        if random.random()<self._disable_prob: # hard coded 60% chance. not ideal.
                             chosen['enabled'] = False
                 else:
                     # Innovation is only in the "self" parent
@@ -368,7 +372,7 @@ class Genome(object):
                 # Innovation is only in the "other" parent
                 chosen = other.get_conn_gene(i).copy()
             # Check the proposed doesn't create a cycle in the child
-            chosen_ok = not( child.creates_cycle((chosen['from'], chosen['to'])) ) if not(child.recurrent) else True
+            chosen_ok = not( child._check_for_cycle((chosen['from'], chosen['to'])) ) if not(child.recurrent) else True
             if chosen_ok:
                 child.conn_genes.append(chosen)
             else:
@@ -382,7 +386,7 @@ class Genome(object):
         for n in need_nodes:
             if n in self_hidden_node_ids:
                 if n in other_hidden_node_ids:
-                    chosen = self.get_node_gene(n).copy() if chooser(self, other) else other.get_node_gene(n).copy()
+                    chosen = random.choice([self.get_node_gene(n).copy(), other.get_node_gene(n).copy()])
                 else:
                     chosen = self.get_node_gene(n).copy()
             elif n in other_hidden_node_ids:
@@ -395,18 +399,25 @@ class Genome(object):
                 continue
             child.node_genes.append(chosen.copy())
         while random.random()<mut_rate:
-            # TODO this was an if. HAve made a while. THink about this.
+            # NB this is a WHILE not an IF. So if mut_rate is 0.5 then the 
+            # chance of one mutation is 0.5, of 2 is 0.25, of 3 is 0.125 etc.
             child.mutate()
         return child
     
-    def get_fitness(self, raw=False):
+    def get_fitness(self, raw: bool = False) -> float:
+        """
+        Returns the fitness of the genome. Optionally returns the raw_fitness
+        if it exists (eg. for use with evaluators which penalise lack of novelty:
+        the image is assigned a raw fitness based on its merit, but the final
+        fitness is lower if it isn't novel.
+        """
         if raw:
             # Get raw_fitness or if it doesn't exist return fitness
             return self.metadata.get('raw_fitness', self.metadata.get('fitness'))
         else:
             return self.metadata.get('fitness')
 
-    def randomise_weights(self):
+    def randomise_weights(self) -> None:
         """
         Shouldn't be used during an evolutionary run, but it is useful for
         testing.
@@ -414,22 +425,26 @@ class Genome(object):
         for g in self.conn_genes:
             g['wgt'] = np.random.normal()
             
-    def empty(self) -> Genome:
+    def _empty(self) -> Genome:
         """
-        Returns an empty genome (ie. no node or connection genes)
-        with same settings (recurrent, verbose) as this one.
+        Returns a genome with the same settings as this one but does not
+        initiate any connections. Used by crossover method.
         """
-        # TODO: Do we need this method? If so need to pass it the other settings.
-        return Genome(0, 0, recurrent=self.recurrent, verbose=self.verbose)
+        return Genome(self.n_in, self.n_out, init_conns=False, 
+               recurrent=self.recurrent, verbose=self.verbose, 
+               activation_funcs=self._activation_funcs,
+               output_funcs=self._output_funcs,
+               mutation_types=self._mutation_types,
+               disable_prob=self._disable_prob)
 
-    def save(self, filename=None):
+    def save(self, filename: str = None) -> None:
         if not filename:
             filename = "./output/genome_" + datetime.datetime.now().strftime("%d%b%Y_%I%p%M") + '.json'
         with open(filename, 'w') as savefile:
             json.dump([self.node_genes, self.conn_genes], savefile)
             
     @staticmethod
-    def load(filename):
+    def load(filename: str) -> Genome:
         with open(filename, 'r') as loadfile:
             data = json.load(loadfile)
         g = Genome(0,0,init_conns=False) # self.n_in and self.n_out will be wrong!
@@ -447,13 +462,3 @@ class Genome(object):
                    .format(g['innov'], g['from'], g['wgt'], g['to'], active='' if g['enabled'] else '(DISABLBED)')
                    for g in self.conn_genes]
         return '\n'.join(out_str)
-
-def chooser(genome1: Genome, genome2: Genome):
-    """
-    A function to determine how genes are chosen when they are shared.
-    ie. randomly or from fitter parent or some hybrid.
-    Making a separate function just so it is easy to change it.
-    Will initially choose randomly.
-    Should return a bool since we are always choosing between two things.
-    """
-    return np.random.choice(2)==1
