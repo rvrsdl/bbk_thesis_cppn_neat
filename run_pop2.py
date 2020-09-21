@@ -22,7 +22,7 @@ with open('config.yaml','r') as f:
     CONFIG = yaml.safe_load(f)
 
 # Some settings
-auto = 0 # 0 for manual; 1 for pexeldiff; 2 for imagenet
+auto = 2 # 0 for manual; 1 for pexeldiff; 2 for imagenet
 channels = 3 # 3 for RGB
 fourier_feats = 0 # zero if you don't want to use.
 bias_len = 1
@@ -59,16 +59,16 @@ for i in range(28):
 grd = td.ImgGrid(imgs, n_imgs=28, nrows=4, title="Final Generation", default_scores=scores)
 grd.run()
 
-cppn = CPPN(NNFF(hof.members['candle'][0]), fmv)
-img = cppn.create_image((128,128), bias=bias_vec)
-img.show()
+# cppn = CPPN(NNFF(hof.members['candle'][0]), fmv)
+# img = cppn.create_image((128,128), bias=bias_vec)
+# img.show()
 
 
-g = pop.this_gen[6]
+g = pop.this_gen[2]
 cppn = CPPN(NNFF(g), fmv)
 img = cppn.create_image((512,512), bias=bias_vec)
 img.show()
-img.save('sept16_2.png')
+img.save('sept17_2.png')
 
 # 
 # from image_cppn import Image

@@ -14,9 +14,42 @@ import matplotlib.pyplot as plt
 
 from nnet import NNFF
 import fourier
+from genome import Genome
 
 # typing definitions
 Dims = Tuple[int, int]
+
+class ImageCreator(object):
+    
+    def __init__(self, colour_channels: int = 3, bias_length: int = 1, fourier_features: int = 0):
+        self.channels = colour_channels
+        self.bias_length = bias_length
+        self.fourier_features = fourier_features
+        self.bias_vec = np.random.normal(size=bias_length)
+        if fourier_features:
+            self.fourier_map_vector = fourier.initialize_fourier_mapping_vector(n_features=fourier_features)
+            self.n_in = (fourier_features*2) + bias_length
+        else:
+            self.fourier_map_vector = None
+            self.n_in = 3 + bias_length
+        
+        
+    def create_image(self, genome: Genome, size=128):
+        cppn = CPPN(NNFF(genome), self.fourier_map_vec)
+        img = cppn.create_image( (size,size), bias=self.bias_vec)
+        img.genome = genome # The image has a reference to its own genome
+        img.creator = self # give it a ref to the creator in case we need to upscale it.
+
+    @property
+    def n_in(self):
+         if self.fourier_features:
+            return (self.fourier_features*2) + self.bias_length
+         else:
+            return 3 + self.bias_length
+    
+    @property
+    def n_out(self):
+        return self.channels
 
 class Image:
     """
@@ -25,7 +58,7 @@ class Image:
     Might also have save and show methods etc.
     """
     
-    def __init__(self, data : np.ndarray):
+    def __init__(self, data : np.ndarray, genome: Genome = None, creator: ImageCreator = None):
         shape = data.shape
         if len(shape) == 2:
             self.channels = 1
@@ -37,14 +70,22 @@ class Image:
             raise Exception("Invalid array shape")
         assert np.max(data) <= 1 and np.min(data) >=0, "Image data must be in range 0-1"
         self.data = data
+        self._genome = genome
+        self._creator = creator
             
-    def save(self, filename: str) -> None:
+    def save(self, filename: str, resolution: tuple = None) -> None:
         """
         Saves the image.
         """
+        if resolution == self.size:
+            # We can just save the image we already have
+            save_data = self.data
+        else:
+            new_img = self._creator.create_image(self._genome, resolution)
+            save_data = new_img.data
         # Note the cmap param is ignored if we have RGB data.
-        imsave(filename, self.data, vmin=0, vmax=1, cmap='gray')
-        
+        imsave(filename, save_data, vmin=0, vmax=1, cmap='gray')
+            
     @staticmethod
     def load(filename: str, channels=3) -> Image:
         """

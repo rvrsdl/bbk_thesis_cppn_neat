@@ -176,7 +176,10 @@ class ImageNetEvaluator(AbstractEvaluator):
     down a jellyfish rabbithole early on. (NB fade factors compound
     so if we have seen 10 jellyfish we will be multiplying by 0.98^10)
     """
-    
+    # TODO: could use HHI to select most concentrated probabilites.
+    # This would mean we wouldn't discard the info of 2nd/3rd etc. most likely.
+    # Aaand we could try selecting for LOW HHI, ie. most uncertainty about category.
+    # Would probably select for blobs, but might be interesting (like CAN networks selecting for uncertain style.)
     def __init__(self, fade_factor=1, channels=3, fourier_map_vec=None, bias_vec=None, visible=False):
         super().__init__(fourier_map_vec=fourier_map_vec, bias_vec=bias_vec, visible=visible)
         self.channels = channels

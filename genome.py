@@ -6,7 +6,7 @@ import yaml
 
 import numpy as np
 
-from funcs import get_funcs, create_args
+import funcs
 
 INNOV = 0
 CONN_DICT = dict()
@@ -20,179 +20,214 @@ class Genome(object):
     This object manages the genome and handles mutation.
     """
 
-    def __init__(self, n_in, n_out, recurrent=False, verbose=False, init_conns=True):
+    def __init__(self, n_in: int, n_out: int, recurrent: bool = False,
+                 verbose: bool = False, init_conns: bool = True, **kwargs):
         """
         Initialise the genes for the basic network in which each output node is connected
         to a random selection of between one and all the input nodes.
         :param n_in: Number of input nodes (including bias)
         :param n_out: Number of output nodes.
         :param recurrent: Whether the network is allowed to be recurrent.
-        :param verbose: For debugging.
+        :param verbose: Print status messages (mainly for debugging)
         """
+        # Set public attributes
         self.n_in = n_in
         self.n_out = n_out
         self.recurrent = recurrent
         self.verbose = verbose
-        #self.fitness = 0 
         self.metadata = {'fitness': 0} # For any extra info we may want to attach to the genome. Init fitness to zero.
-        #self.allowed_act_funcs = ['sigmoid', 'relu', 'tanh', 'sin', 'abs']
-        #self.allowed_act_funcs = ['round','mod']
-        self.allowed_act_funcs = get_funcs('names')
-        #self.allowed_act_funcs = ['tanh']
-        # default could be everything returned by: get_funcs('names')
-        # Add the input and output nodes to the list of node_genes
-        self.node_genes = []
-        for i in range(n_in):
-            self.node_genes.append({
-                'id': i,
-                'layer': 'input',
-                'agg_func': None,
-                'act_func': None,
-            })
-        for i in range(n_in, n_in+n_out):
-            #act_func = random.choice(['gaussian','sigmoid'])
-            act_func = 'sigmoid'
-            act_args = create_args(get_funcs(act_func))
-            self.node_genes.append({
-                'id': i,
-                'layer': 'output',
-                'agg_func': 'sum',
-                'act_func': act_func,
-                'act_args': act_args
-            })
-        self.conn_genes = []
-        if init_conns:
-            self.init_conns()
         
-    def init_conns(self):
-        # Now make some connections between inputs and outputs according to the probabilities in p.
-        # All output neurons need to be connected to something. Doesn't matter if not all inputs are connected.
+        # Set private attributes
+        defaults = self._default_settings()
+        self._activation_funcs = kwargs.get('activation_funcs', defaults.get('activation_funcs'))
+        self._output_funcs = kwargs.get('output_funcs', defaults.get('output_funcs'))
+        self._mutation_types = kwargs.get('mutation_types', defaults.get('mutation_types'))
+        
+        # Create a list of input and output node genes
+        self._node_genes = []
+        for i in range(n_in):
+            self._create_node_gene(i,'input')
+        for i in range(n_in, n_in+n_out):
+            self._create_node_gene(i,'output')
+        
+        # Create a list of connection genes
+        self._conn_genes = []
+        if init_conns: # TODO - this seems weird.
+            self.init_conns()
+            
+    def _default_settings(self) -> dict:
+        """
+        Returns a dict of defualt settings for use in __init__
+        in case explicit settings aren't provided.
+        """
+        settings = {
+            'activation_funcs': funcs.get_funcs('names'),
+            'output_funcs': ['sigmoid', 'gaussian'],
+            'mutation_types': [
+                {'func': 'alter_wgt', 'prob': 0.4},
+                {'func': 'flip_wgt', 'prob': 0.1},
+                {'func': 'add_connection', 'prob': 0.3},
+                {'func': 'add_node', 'prob': 0.1},
+                {'func': 'disable_connection', 'prob': 0.1}
+            ]
+        }
+        return settings
+        
+    def init_conns(self) -> None:
+        """
+        Initialises connections between the input and output nodes.
+        (At this point there should be no hidden layer nodes as this
+        should be called during initialisation.)
+        """
+        # All output neurons need to be connected to something. 
+        # Doesn't matter if not all inputs are connected.
         inp_ids = self.get_node_ids('input')
         for o_n in self.get_node_ids('output'):
-            n_conns = np.random.randint(1, len(inp_ids))
+            n_conns = random.randint(1, len(inp_ids))
             #chosen_inputs = np.random.choice(inp_ids, n_conns, replace=False)
             chosen_inputs = random.sample(inp_ids, n_conns)
             for i_n in chosen_inputs:
                 if self.verbose: print('Connecting node %d to node %d' % (i_n, o_n))
-                self.make_connection((i_n, o_n))
+                self._make_connection((i_n, o_n))
                 
-                
-    def get_node_ids(self, layer='all'):
+    def get_node_ids(self, layer: str = 'all') -> list:
+        """
+        Returns the node ID numbers in a particular layer (input, hidden or 
+        output)
+        """
         if layer=='all':
-            return [n['id'] for n in self.node_genes]
+            return [n['id'] for n in self._node_genes]
         else:
-            return [n['id'] for n in self.node_genes if n['layer'] == layer]
+            return [n['id'] for n in self._node_genes if n['layer'] == layer]
     
-    def get_conn_ids(self, only_enabled=False):
+    def get_conn_ids(self, only_enabled: bool = False) -> list:
+        """
+        Returns the connection ID numbers (aka the innovation numbers).
+        It can optionally do it only for the enabled ones.
+        """
         if only_enabled:
-            return [c['innov'] for c in self.conn_genes if c['enabled']]
+            return [c['innov'] for c in self._conn_genes if c['enabled']]
         else:
-            return [c['innov'] for c in self.conn_genes]
+            return [c['innov'] for c in self._conn_genes]
     
-    def get_conn_gene(self, innov):
-        found = [g for g in self.conn_genes if g['innov']==innov]
+    def get_conn_gene(self, innov: int) -> dict:
+        """
+        Returns the information dict of a particular connection gene.
+        """
+        found = [g for g in self._conn_genes if g['innov']==innov]
         if found:
             return found[0] # take it out of list
         else:
             raise ValueError('Innovation {} not found'.format(innov))
             
-    def get_node_gene(self, idn):
-        found = [g for g in self.node_genes if g['id']==idn]
+    def get_node_gene(self, idnum: int) -> dict:
+        """
+        Returns the information dict of a particula node gene.
+        """
+        found = [g for g in self._node_genes if g['id']==idnum]
         if found:
             return found[0]
         else:
-            raise ValueError('Innovation {} not found'.format(idn))
+            raise ValueError('Innovation {} not found'.format(idnum))
     
-    def get_connections(self, only_enabled=True):
+    def get_connections(self, only_enabled: bool = True) -> set:
         """
         Returns a set of tuples of connected nodes: (from, to)
-        :return: a set of tuples of connected nodes
+        By default it only returns the enabled connections
         """
         if only_enabled:
-            return {(g['from'], g['to']) for g in self.conn_genes if g['enabled']}
+            return {(g['from'], g['to']) for g in self._conn_genes if g['enabled']}
         else:
-            return {(g['from'], g['to']) for g in self.conn_genes}
-
-    def add_connection(self):
-        """
-        Adds a connection gene creating a connection from the pool of unused pairwise node
-        connections (not allowed self-connection or connection to the input layer.
-        If it is not a recurrent network, then connections which would create a cycle are also not
-        allowed.
-        :return: None
-        """
-        existing_conns = self.get_connections(only_enabled=False)
-        all_possible_conns = {(u['id'], v['id']) for u in self.node_genes for v in self.node_genes
-                          if u['id'] != v['id'] # can't connect a node to itself
-                          and v['layer'] != 'input' # can't connect TO an input node (cos input nodes are really just the data)
-                          and u['layer'] != 'output'} # can't connect FROM an output layer (could relax this.)
-        available_conns = all_possible_conns - existing_conns
-        if self.verbose: print('Available connections: ' + str(available_conns))
-
-        if not(self.recurrent):
-            cycle_conns = set(filter(self.creates_cycle, available_conns))
-            available_conns = available_conns - cycle_conns
-            if self.verbose: print("Which wouldn't create a cycle: " + str(available_conns))
-
-        if available_conns:
-            chosen = random.sample(available_conns, 1)[0]
-            if self.verbose: print('We chose: ' + str(chosen))
-            self.make_connection(chosen)
-        else:
-            print('No new connections possible')
-
-    def creates_cycle(self, test):
-        """
-        Returns true if the addition of the 'test' connection would create a cycle,
-        assuming that no cycle already exists in the graph represented by 'connections'.
-        Copied from: https://github.com/CodeReclaimers/neat-python/blob/master/neat/graphs.py
-        """
-        connections = self.get_connections(False)
-        i, o = test
-        if i == o:
-            return True
-
-        visited = {o}
-        while True:
-            num_added = 0
-            for a, b in connections:
-                if a in visited and b not in visited:
-                    if b == i:
-                        return True
-
-                    visited.add(b)
-                    num_added += 1
-
-            if num_added == 0:
-                return False
+            return {(g['from'], g['to']) for g in self._conn_genes}
 
     def add_node(self):
         """
         Adds a new node by breaking an existing connection in two.
-        The first of the two new connections has weight 1, and the second has the original weight.
+        The first of the two new connections has weight 1, and the second has 
+        the original weight.
         This means that when the node is first added it should have no effect.
         The original connection is kept but disabled.
         """
         chosen_gene = random.sample(self.conn_genes, 1)[0]
         # Create the new node
         new_node_id = len(self.node_genes)
-        act_func = random.choice(self.allowed_act_funcs)
-        # NB Otoro uses tanh for all but the output layer.
-        act_args = create_args(get_funcs(act_func)) # gets some random values for any extra args required
-        self.node_genes.append({
-            'id': new_node_id,
-            'layer': 'hidden',
-            'agg_func': 'sum',
-            'act_func': act_func,
-            'act_args': act_args
-        })
+        self._create_node_gene(new_node_id, 'hidden')
         # Reorganise the connections
-        self.make_connection((chosen_gene['from'], new_node_id), wgt=1)
-        self.make_connection((new_node_id, chosen_gene['to']), wgt=chosen_gene['wgt'])
+        self._create_conn_gene((chosen_gene['from'], new_node_id), wgt=1)
+        self._create_conn_gene((new_node_id, chosen_gene['to']), wgt=chosen_gene['wgt'])
         # Disable the original connection
         chosen_gene['enabled'] = False
+    
+    def add_connection(self) -> None:
+        """
+        Adds a connection gene, creating a connection from the pool of unused 
+        pairwise node connections.
+        We are not allowed self-connections or connections to the input layer.
+        If it is not a recurrent network, then connections which would create 
+        a cycle are also not allowed.
+        """
+        existing_conns = self.get_connections(only_enabled=False)
+        all_possible_conns = {(u['id'], v['id']) for u in self._node_genes for v in self._node_genes
+                          if u['id'] != v['id'] # can't connect a node to itself
+                          and v['layer'] != 'input' # can't connect TO an input node
+                          and u['layer'] != 'output'} # can't connect FROM an output layer
+        available_conns = all_possible_conns - existing_conns
+        if self.verbose: print('Available connections: ' + str(available_conns))
+
+        if not(self.recurrent):
+            cycle_conns = set(filter(self._check_for_cycle, available_conns))
+            available_conns = available_conns - cycle_conns
+            if self.verbose: print("Which wouldn't create a cycle: " + str(available_conns))
+
+        if available_conns:
+            chosen = random.sample(available_conns, 1)[0]
+            if self.verbose: print('We chose: ' + str(chosen))
+            self._create_connection(chosen) # Actually add a new connection gene
+        else:
+            print('No new connections possible')
+
+    def _check_for_cycle(self, candidate: tuple):
+        """
+        Returns true if adding the candidate connection would create a cycle
+        in the graph of connections.
+        """
+        connections = self.get_connections(False)
+        _from, _to = candidate
+        if _from == _to:
+            return True
         
-    def make_connection(self, path, wgt=None):
+        seen = {_to}
+        while True:
+            num_added = 0
+            for a, b in connections:
+                if a in seen and b not in seen:
+                    if b == _from:
+                        return True
+                    seen.add(b)
+                    num_added += 1
+
+            if num_added == 0:
+                return False
+
+    def _create_node_gene(self, idnum: int, layer: str) -> None:
+        if layer == 'input':
+            act_func_name = None
+            act_func_args = None
+        else:
+            if layer == 'output':
+                act_func_name = random.choice(self._output_funcs)
+            else:
+                act_func_name = random.choice(self._activation_funcs)
+            act_func_args = funcs.create_args(funcs.get_funcs(act_func_name))
+        self._node_genes.append({
+            'id': idnum,
+            'layer': 'output',
+            'agg_func': 'sum',
+            'act_func': act_func_name,
+            'act_args': act_func_args
+        })
+    
+    def _create_conn_gene(self, path, wgt: float =None):
         """
         Appends a connection to self.conn_genes using the 
         appropriate innovation number (incremented if
@@ -201,7 +236,7 @@ class Genome(object):
         """
         global INNOV
         global CONN_DICT
-        if wgt==None: wgt = np.random.normal() # From the normal distribution
+        if wgt==None: wgt = np.random.uniform(-5,5) # TODO np.random.normal() # From the normal distribution
         if path in CONN_DICT:
                 innov = CONN_DICT[path]
         else:
@@ -209,7 +244,7 @@ class Genome(object):
             CONN_DICT[path] = innov
             INNOV += 1
         # add the connection gene.
-        self.conn_genes.append({
+        self._conn_genes.append({
             'innov': innov,
             'from': path[0],
             'to': path[1],
@@ -236,22 +271,6 @@ class Genome(object):
                 cg['enabled'] = False
                 break
         if self.verbose: print('No disable-able connection found')
-        
-    def split_node(self):
-        """
-        A new form of mutation invented by meee.
-        The problem witk K.Stanley's two topographical mutations is they don't
-        allow much sideways expansion. Eg. if you have a network with one input
-        and one output and repeatedly add nodes they will all be in a single
-        long chain...
-        This split_node will mean A--B--C becomes:
-          -B1-
-        A<    >C
-          -B2-
-        How to keep effect the same initially?
-        Could have act func
-        """
-        pass
     
     def alter_weight(self, n_to_alter=1):
         chosen = random.sample(self.conn_genes, n_to_alter)
@@ -289,8 +308,6 @@ class Genome(object):
         probs = [m['prob'] for m in mutation_types]
         chosen_mutation = np.random.choice(options, p=probs)
         chosen_mutation() # Execute the chosen mutation.
-
-        
     
     def randomise_weights(self):
         """

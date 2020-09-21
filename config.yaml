@@ -3,32 +3,39 @@
 # Config file for NEAT-CPPN system.
 
 # Could do some of this as command_line options.
-interactive_mode: True
+visible: True
+evaluation: interactive # / target / imagenet
 
 population_size: 28
-colour_channels: 3
-bias_length: 1
-fourier_feautres: 0
 
-mutation_types:
-- {func: alter_wgt, prob: 0.4}
-- {func: flip_wgt, prob: 0.1}
-- {func: add_connection, prob: 0.3}
-- {func: add_node, prob: 0.1}
-- {func: disable_connection, prob: 0.1}
+image_settings:
+    colour_channels: 3,
+    bias_length: 4,
+    fourier_features: 11
 
-functions:
-- sigmoid
-- relu
-- tanh
-- sin
-- abs
-- gaussian
-- mod
-- round
-- point
+target_image: 'duck_bw_128.png'
 
-output_functions:
-- sigmoid
-- gaussian
+genome_settings:
+    activation_funcs:
+        - sigmoid
+        - relu
+        - tanh
+        - sin
+        - abs
+        - gaussian
+        - mod
+        - round
+        - point
+    output_funcs:
+        - sigmoid
+        - gaussian
+    mutation_types:
+        - {func: alter_wgt, prob: 0.4}
+        - {func: flip_wgt, prob: 0.1}
+        - {func: add_connection, prob: 0.3}
+        - {func: add_node, prob: 0.1}
+        - {func: disable_connection, prob: 0.1}
+
+save_location: '/home/riversdale/Documents/MSc/thesis/rw_neat/output/'
+save_size: 512
 
