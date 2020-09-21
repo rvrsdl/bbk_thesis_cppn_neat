@@ -72,6 +72,18 @@ class Genome(object):
             ]
         }
         return settings
+    
+    def _get_settings_dict(self) -> dict:
+        """
+        Packs this genomes settings into a dict which can then be used for 
+        initialising a child Genome during crossover.
+        """
+        settings = {
+            'activation_funcs': self._activation_funcs,
+            'output_funcs': self._output_funcs,
+            'mutation_types': self._mutation_types
+            }
+        return settings
         
     def init_conns(self) -> None:
         """
@@ -140,7 +152,7 @@ class Genome(object):
         else:
             return {(g['from'], g['to']) for g in self._conn_genes}
 
-    def add_node(self):
+    def add_node(self) -> None:
         """
         Adds a new node by breaking an existing connection in two.
         The first of the two new connections has weight 1, and the second has 
@@ -210,6 +222,10 @@ class Genome(object):
                 return False
 
     def _create_node_gene(self, idnum: int, layer: str) -> None:
+        """
+        Appends a node gene to self._node_genes. Chooses an activation function
+        at random from the available functions for the hidden or output layers.
+        """
         if layer == 'input':
             act_func_name = None
             act_func_args = None
@@ -227,9 +243,9 @@ class Genome(object):
             'act_args': act_func_args
         })
     
-    def _create_conn_gene(self, path, wgt: float =None):
+    def _create_conn_gene(self, path, wgt: float = None) -> None:
         """
-        Appends a connection to self.conn_genes using the 
+        Appends a connection to self._conn_genes using the 
         appropriate innovation number (incremented if
         connection not seen before, otherwise using the
         innovation number of when it was first made).
@@ -252,79 +268,70 @@ class Genome(object):
             'enabled': True
         })
         
-    def disable_random_conn(self):
+    def _disable_random_conn(self) -> None:
         """
-        A mutation type which disables a random connection gene.
-        Generally have quite a low probability of this type of
-        mutation. But it is useful because it offers a way to
-        reduce complexity. Would we be better off removing the gene
-        entirely rather than disabling?
+        A mutation which disables a random connection gene.
+        We will generally have quite a low probability of this type of 
+        mutation. But it is useful because it offers a way to reduce complexity.
         """
         # We need to not end up with any "stranded" nodes
         # ie. nodes not in the input layer which don't have iny inputs.
-        # I thiiink any conn where the 'to' node has other inputs is safe to delete.
+        # Any connection where the 'to' node has other inputs is safe to delete.
         # That way we shouldn't get any stranded nodes.
-        # So we might need to go through all the connections to find one that is ok to delete.
-        chosen_genes = random.sample(self.conn_genes, len(self.conn_genes))
+        # We might need to go through all the connections to find one that is 
+        # ok to delete.
+        chosen_genes = random.sample(self.conn_genes, len(self.conn_genes)) # get a shuffled list of the connection genes
+        to_connections = np.array([t[1] for t in self.get_connections()])
         for cg in chosen_genes:
-            if np.sum( np.array([t[1] for t in self.get_connections()]) == cg['to']) >=2:
+            if np.sum( to_connections == cg['to']) >=2:
                 cg['enabled'] = False
                 break
         if self.verbose: print('No disable-able connection found')
     
-    def alter_weight(self, n_to_alter=1):
+    def _alter_weight(self, n_to_alter: int = 1) -> None:
+        """
+        A mutation which alters the weight of one or maore random connection
+        genes. It peturbs the weight by an amount selected from the normal
+        distribution. This will usually be the most common type of mutation.
+        """
         chosen = random.sample(self.conn_genes, n_to_alter)
         for conn in chosen:
             # peturb by a number selected from the normal distribution.
-            conn['wgt'] += float(np.random.randn(1))
+            conn['wgt'] += float(np.random.normal())
     
-    def flip_weight(self, n_to_flip=1):
+    def _flip_weight(self, n_to_flip: int = 1) -> None:
+        """
+        A mutation which inverts (positive/negative) the weight of one or more
+        random connection genes. Should be a fairly rare mutation.
+        """
         chosen = random.sample(self.conn_genes, n_to_flip)
         for conn in chosen:
             # flip the sign
             conn['wgt'] = -conn['wgt']
         
-    
     def mutate(self):
         """
-        Amethod which chooses one of the three mutation types
-        (add_connection, add_node, alter_weight)
-        based on probability of each. (Would this be an input or instance variables?)
-        For now using fixed probabilities:
-            add_connection should have higher probability than add_node
-            (because we need more connections than nodes)
-            alter_weight should have the highest probability.
-        Would be nice to have these alter with age. Young one want to
-        add nodes/connections fast, older ones whould focus on altering weights.
+        Applies one of the mutation types based on the probabilities set
+        during initialisation.
         """
-
-        func_dict = {'alter_wgt': self.alter_weight,
-                     'flip_wgt': self.flip_weight,
-                     'add_connection': self.add_connection,
-                     'add_node': self.add_node,
-                     'disable_connection': self.disable_random_conn}
-        mutation_types = CONFIG['mutation_types']
-        options = [func_dict[m['func']] for m in mutation_types]
-        probs = [m['prob'] for m in mutation_types]
+        # Make a func dict mapping from the mutation type names to the actual functions
+        func_dict = {'alter_wgt': self._alter_weight,
+                     'flip_wgt': self._flip_weight,
+                     'add_connection': self._add_connection,
+                     'add_node': self._add_node,
+                     'disable_connection': self._disable_random_conn}
+        options = [func_dict[m['func']] for m in self._mutation_types]
+        probs = [m['prob'] for m in self._mutation_types]
         chosen_mutation = np.random.choice(options, p=probs)
         chosen_mutation() # Execute the chosen mutation.
     
-    def randomise_weights(self):
+    def crossover(self, other: Genome, mut_rate: float = 0) -> Genome:
         """
-        We shouldn't use this for real - just adding for testing.
+        Creates an offspring genome from this and another parent.
+        Some of the offsprings genes are mutated (controlled by the mut_rate
+        parameter).
         """
-        for g in self.conn_genes:
-            g['wgt'] = np.random.randn()
-            
-    def empty(self):
-        """
-        Returns an empty genome (ie. no node or connection genes)
-        with same settings (recurrent, verbose) as this one.
-        """
-        return Genome(0, 0, recurrent=self.recurrent, verbose=self.verbose)
-
-    def crossover(self, other: Genome, mut_rate=0):
-        # Create a child genome with no connections
+        # Create a child genome with no connections and the same settings
         child = Genome(self.n_in, self.n_out, init_conns=False, recurrent=self.recurrent, verbose=self.verbose)
         # Choose and add the connection genes
         self_innovs = self.get_conn_ids()
@@ -398,6 +405,22 @@ class Genome(object):
             return self.metadata.get('raw_fitness', self.metadata.get('fitness'))
         else:
             return self.metadata.get('fitness')
+
+    def randomise_weights(self):
+        """
+        Shouldn't be used during an evolutionary run, but it is useful for
+        testing.
+        """
+        for g in self.conn_genes:
+            g['wgt'] = np.random.normal()
+            
+    def empty(self) -> Genome:
+        """
+        Returns an empty genome (ie. no node or connection genes)
+        with same settings (recurrent, verbose) as this one.
+        """
+        # TODO: Do we need this method? If so need to pass it the other settings.
+        return Genome(0, 0, recurrent=self.recurrent, verbose=self.verbose)
 
     def save(self, filename=None):
         if not filename:
