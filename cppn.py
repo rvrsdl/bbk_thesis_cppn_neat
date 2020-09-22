@@ -8,7 +8,7 @@ from PIL import Image
 
 from genome import Genome
 from nnet import NNFF
-from netviz import netviz
+from visualise import netviz
 
 import fourier
 

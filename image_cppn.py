@@ -98,7 +98,7 @@ class Image:
             new_img = self.creator.create_image(self.genome, resolution)
             return new_img
 
-    def save(self, filename: str = None, resolution: int = None) -> str:
+    def save_img(self, filename: str = None, resolution: int = None) -> str:
         """
         Saves the image.
         """
@@ -106,20 +106,27 @@ class Image:
             save_data = self.change_resolution(resolution).data
         else:
             save_data = self.data
+        savepath = self._get_savepath(filename) + '.png'
+        imsave(savepath, save_data, vmin=0, vmax=1, cmap='gray') # Note the cmap param is ignored if we have RGB data.
+        print('Image saved here: {}'.format(savepath))
+        return savepath
 
+    def save_genome(self, filename: str = None):
+        savepath = self._get_savepath(filename) + '.json'
+        self.genome.save(savepath)
+        print('Genome saved here: {}'.format(savepath))
+        return savepath
+
+    def _get_savepath(self, filename: str = None):
         if filename:
             filename, suffix = os.path.splitext(filename)
-            if not suffix:
-                suffix = '.png'
             savedir = self.creator.save_loc
         else:
-            filename, suffix = self.name, '.png'
+            filename = self.name
             savedir = os.path.join(self.creator.save_loc, self.creator.base_name)
         if not os.path.exists(savedir):
             os.mkdir(savedir)
-        savepath = os.path.join(savedir, filename + suffix)
-        imsave(savepath, save_data, vmin=0, vmax=1, cmap='gray') # Note the cmap param is ignored if we have RGB data.
-        print('Image saved here: {}'.format(savepath))
+        savepath = os.path.join(savedir, filename)
         return savepath
 
     @staticmethod

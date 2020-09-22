@@ -33,8 +33,7 @@ def main():
         target = Image.load(CFG['target_img'], CFG['image_settings']['colour_channels'])
         evaluator = PixelPctEvaluator(image_creator, target_img=target, visible=CFG['visible'])
     elif evaluation == 'imagenet':
-        evaluator = ImageNetEvaluator(image_creator, fade_factor=0.98, visible=CFG[
-            'visible'])  # TODO: fade_factor magic number - could load from config??
+        evaluator = ImageNetEvaluator(image_creator, fade_factor=0.98, visible=CFG['visible'])  # TODO: fade_factor magic number - could load from config??
 
     population.run(evaluator=evaluator, generations=CFG['max_generations'])
 

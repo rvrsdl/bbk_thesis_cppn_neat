@@ -8,7 +8,7 @@ Created on Sun Mar 22 13:56:41 2020
 """
 
 import genome as g
-import netviz as v
+import visualise as v
 import nnet as n
 import population as p
 
@@ -36,7 +36,7 @@ import population as p
 from population import Population
 from genome import Genome
 from nnet import NNFF
-from netviz import netviz
+from visualise import netviz
 
 pop = Population(4, 3)
 ch = pop.this_gen[1].crossover(pop.this_gen[3])
@@ -72,7 +72,7 @@ show_image(img)
 from genome import Genome
 from nnet import NNFF
 import cppn
-from netviz import netviz
+from visualise import netviz
 G = Genome.load("failed.json")
 net = NNFF(G)
 img = cppn.create_image2(net, imsize=(64,64))
@@ -94,7 +94,7 @@ import numpy as np
 from genome import Genome
 import cppn
 from nnet import NNFF
-from netviz import netviz
+from visualise import netviz
 G = Genome(4,3)
 G.mutate()
 G.mutate()

@@ -11,7 +11,7 @@ from PIL import ImageTk, Image
 from image_cppn import Image as MyImage
 import numpy as np
 
-import cppn
+from visualise import render_saved_genome
 
 aborted = False
 
@@ -183,15 +183,32 @@ class ImgGrid(object):
         window.title('High Resolution')
         lab = tk.Label(window, image=imgtk)
         lab.image = imgtk # Annoying tkinter thing. See here: http://effbot.org/pyfaq/why-do-my-tkinter-images-not-appear.htm
-        save_button = tk.Button(window, text="Save", command=lambda: save_cmd())
+        save_image_button = tk.Button(window, text="Save Image", command=lambda: save_image())
+        save_genome_button = tk.Button(window, text="Save Genome", command=lambda: save_genome())
+        show_genome_button = tk.Button(window, text="Show Genome")
         lab.pack()
-        save_button.pack()
+        save_image_button.pack()
+        save_genome_button.pack()
 
-        def save_cmd():
-            saved_path = img_large.save()
-            save_button['state'] = tk.DISABLED
+        def save_image():
+            saved_path = img_large.save_img()
+            save_image_button['state'] = tk.DISABLED
             lab['text'] = 'Saved here:\n{}'.format(saved_path)
             lab['compound'] = 'top'
+
+        def save_genome():
+            saved_path = img_large.save_genome()
+            save_genome_button['state'] = tk.DISABLED
+            lab['text'] = 'Saved here:\n{}'.format(saved_path)
+            lab['compound'] = 'top'
+            show_genome_button['command'] = lambda p=saved_path: show_genome(p)
+            show_genome_button.pack()
+
+        def show_genome(path):
+            render_saved_genome(path)
+            show_genome_button['state'] = tk.DISABLED
+
+
 
     def on_closing(self):
         """

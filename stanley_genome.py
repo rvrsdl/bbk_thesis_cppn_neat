@@ -5,7 +5,7 @@ NB all innovation and node numbers are one less than in Fig.4
 as we are uzing zero-ased indexing.
 """
 import nnet
-import netviz as v
+import visualise as v
 
 parent1 = nnet.Genome(3,1,init_conns=False)
 parent1.node_genes.append({

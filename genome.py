@@ -444,9 +444,9 @@ class Genome(object):
     def load(filename: str) -> Genome:
         with open(filename, 'r') as loadfile:
             data = json.load(loadfile)
-        g = Genome(0, 0, init_conns=False)  # self.n_in and self.n_out will be wrong!
-        g.node_genes = data[0]
-        g.conn_genes = data[1]
+        g = Genome(0, 0, init_conns=False)
+        g._node_genes = data[0]
+        g._conn_genes = data[1]
         g.n_in = len(g.get_node_ids('input'))
         g.n_out = len(g.get_node_ids('output'))
         return g
