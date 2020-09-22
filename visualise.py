@@ -34,10 +34,10 @@ def netviz(genome, show_wgts=False):
             colour = 'blue'
         elif node_info['layer'] == 'output':
             desc = all_desc[i]
-            label = "{id}: {layer}\nfunc: {act_func}\n{desc}".format(desc=desc, **node_info)
+            label = "{id}: {layer}\nact: {act_func}\nagg: {agg_func}\n{desc}".format(desc=desc, **node_info)
             colour = 'red'
         else:
-            label = "{id}: {layer}\nfunc: {act_func}".format(**node_info)
+            label = "{id}: {layer}\nact: {act_func}\nagg: {agg_func}".format(**node_info)
             colour = 'black'
         nn.node(str(i), label=label, color=colour)
 

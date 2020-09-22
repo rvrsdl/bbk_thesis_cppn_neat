@@ -78,20 +78,26 @@ class NNFF(object):
         """
         assert len(a) == len(self.layers[0]), "Input vector must be same size as input layer."
         node_vals = {node: val for (node, val) in zip(self.layers[0], a)}   # Initialise the dict with inputs
+        agg_func_dict = {'sum': np.sum, 'max': np.max}
         for linfo in self.layer_info:
             inp_vec = np.array([node_vals[n] for n in linfo['from_nodes']])
             weights = linfo['wgts_mat']
             act_funcs = linfo['act_funcs']
             act_args = linfo['act_args']
             agg_func_strs = linfo['agg_func_strs']
-            agg_func_dict = {'sum': np.sum, 'max': np.max}
-            agg_funcs = [agg_func_dict.get(s) for s in agg_func_strs]
-            #zs = np.dot(weights, inp_vec) # all sum
-            #zs = np.max(weights[:, :, None] * inp_vec[None, :, :], axis = 1) # all max
-            zs = []
-            for w, agf in zip(weights, agg_funcs):
-                zs.append(agf(w[:,None] * inp_vec[None, :, :], axis=1)) #mixed agg_funcs
-            zs = np.squeeze(zs, axis=1)
+            all_sum = np.all(np.array(agg_func_strs) == 'sum')
+            if all_sum:
+                # If they are all sum aggregations, it is much more efficient to use np.dot
+                zs = np.dot(weights, inp_vec)
+                # zs = np.max(weights[:, :, None] * inp_vec[None, :, :], axis = 1) # all max
+            else:
+                agg_funcs = [agg_func_dict.get(s) for s in agg_func_strs]
+                zs = np.squeeze([agf(w[:, None] * inp_vec[None, :, :], axis=1)
+                                 for w, agf in zip(weights, agg_funcs)], axis=1)
+                # zs = []
+                # for w, agf in zip(weights, agg_funcs):
+                #     zs.append(agf(w[:,None] * inp_vec[None, :, :], axis=1)) #mixed agg_funcs
+                # zs = np.squeeze(zs, axis=1)
             out_vec = np.array([f(z, **p) for f, z, p in zip(act_funcs, zs, act_args)])
             node_vals.update({node: val for (node, val) in zip(linfo['to_nodes'], out_vec)})
         try:

@@ -31,8 +31,8 @@ genome_settings:
         - {func: round, prob: 1}
         - {func: point, prob: 1}
     aggregation_funcs:
-        - {func: sum, prob: 0.9}
-        - {func: max, prob: 0.1}
+        - {func: sum, prob: 0.8}
+        - {func: max, prob: 0.2} # seems to have a problem with upscaling
     output_funcs:
         - {func: sigmoid, prob: 1}
         - {func: gaussian, prob: 1}

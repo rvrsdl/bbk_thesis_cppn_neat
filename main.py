@@ -16,12 +16,12 @@ from population import Population
 
 
 def main():
-    with open('config.yaml', 'r') as f:  # TODO: allow any config file to be passed in
+    with open('config2.yaml', 'r') as f:  # TODO: allow any config file to be passed in
         CFG = yaml.safe_load(f)
 
     # set up components
     image_creator = ImageCreator(save_loc=CFG['save_location'], **CFG['image_settings'])  # poor style? Use another builder?
-    seed_genome = Genome(image_creator.n_in, image_creator.n_out, **CFG['genome_settings'])
+    seed_genome = Genome(image_creator.n_in, image_creator.n_out, settings=CFG['genome_settings'])
     population = Population(seed_genome=seed_genome, **CFG['population_settings'])
 
     # evaluator

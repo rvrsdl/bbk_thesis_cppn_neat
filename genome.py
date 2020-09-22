@@ -4,6 +4,7 @@ import datetime
 import json
 
 import numpy as np
+import yaml
 
 import funcs
 
@@ -17,7 +18,8 @@ class Genome(object):
     """
 
     def __init__(self, n_in: int, n_out: int, recurrent: bool = False,
-                 verbose: bool = False, init_conns: bool = True, **kwargs):
+                 verbose: bool = False, init_conns: bool = True,
+                 settings: dict = dict()):
         """
         Initialise the genes for the basic network in which each output node
         is connected to a random selection of between one and all the input
@@ -35,11 +37,10 @@ class Genome(object):
         self.metadata = {'fitness': 0}  # For any extra info we may want to attach to the genome. Init fitness to zero.
 
         # Set private attributes
-        defaults = self._default_settings()
-        self._activation_funcs = kwargs.get('activation_funcs', defaults.get('activation_funcs'))
-        self._output_funcs = kwargs.get('output_funcs', defaults.get('output_funcs'))
-        self._mutation_types = kwargs.get('mutation_types', defaults.get('mutation_types'))
-        self._disable_prob = kwargs.get('disable_prob', defaults.get('disable_prob'))
+        self._settings = self._default_settings()
+        self._settings.update(settings)  # Overwrite with any settings that have been passed in
+        if self.verbose:
+            print(yaml.dump(settings, default_flow_style=True))
 
         # Create a list of input and output node genes
         self._node_genes = []
@@ -60,9 +61,16 @@ class Genome(object):
         in case explicit settings aren't provided.
         """
         settings = {
-            'activation_funcs': funcs.get_funcs('names'),
-            'output_funcs': ['sigmoid', 'gaussian'],
-            'mutation_types': [
+            'activation_funcs': [{'func': f, 'prob': 1} for f in funcs.get_funcs('names')],
+            'output_funcs': [
+                {'func': 'sigmoid', 'prob': 0.5},
+                {'func': 'gaussian', 'prob': 0.5}
+            ],
+            'aggregation_funcs': [
+                {'func': 'sum', 'prob': 1},
+                {'func': 'max', 'prob': 0}
+            ],
+            'mutation_funcs': [
                 {'func': 'alter_wgt', 'prob': 0.4},
                 {'func': 'flip_wgt', 'prob': 0.1},
                 {'func': 'add_connection', 'prob': 0.3},
@@ -223,16 +231,19 @@ class Genome(object):
         if layer == 'input':
             act_func_name = None
             act_func_args = None
+            agg_func_name = None
         else:
             if layer == 'output':
-                act_func_name = random.choice(self._output_funcs)
-            else:
-                act_func_name = random.choice(self._activation_funcs)
+                act_func_name = self._func_selector('output')
+                agg_func_name = 'sum'  # Always sum at output layer
+            else:  # hidden
+                act_func_name = self._func_selector('activation')
+                agg_func_name = self._func_selector('aggregation')
             act_func_args = funcs.create_args(funcs.get_funcs(act_func_name))
         self._node_genes.append({
             'id': idnum,
             'layer': layer,
-            'agg_func': random.choice(['sum','max']),
+            'agg_func': agg_func_name,
             'act_func': act_func_name,
             'act_args': act_func_args
         })
@@ -317,9 +328,7 @@ class Genome(object):
                      'add_connection': self.add_connection,
                      'add_node': self.add_node,
                      'disable_connection': self._disable_random_conn}
-        options = [func_dict[m['func']] for m in self._mutation_types]
-        probs = [m['prob'] for m in self._mutation_types]
-        chosen_mutation = np.random.choice(options, p=probs)
+        chosen_mutation = func_dict.get(self._func_selector('mutation'))
         chosen_mutation()  # Execute the chosen mutation.
 
     def _func_selector(self, which):
@@ -366,7 +375,7 @@ class Genome(object):
                     if not (opt1['enabled']) or not (opt2['enabled']):
                         # Stanley: "there’s a preset chance that an inherited gene is disabled
                         # if it is disabled in either parent."
-                        if random.random() < self._disable_prob:  # hard coded 60% chance. not ideal.
+                        if random.random() < self._settings.get('disable_prob'):
                             chosen['enabled'] = False
                 else:
                     # Innovation is only in the "self" parent
@@ -435,10 +444,7 @@ class Genome(object):
         """
         return Genome(self.n_in, self.n_out, init_conns=False,
                       recurrent=self.recurrent, verbose=self.verbose,
-                      activation_funcs=self._activation_funcs,
-                      output_funcs=self._output_funcs,
-                      mutation_types=self._mutation_types,
-                      disable_prob=self._disable_prob)
+                      settings=self._settings)
 
     def save(self, filename: str = None) -> None:
         # TODO: use save loc from config and match image saving protocol.
