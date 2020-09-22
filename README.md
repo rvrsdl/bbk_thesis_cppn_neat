@@ -79,3 +79,7 @@ a lack of diversity. So speciation is going to become necessary. The problem
 is that whenever a new class is introduced, it gets a very high rating and the
 population rapidly moves completely towards that class, then the ratings fall
 quickly until  new class is introduced. So we end up just flippling between classes
+
+Possibility of using max as agg_func:
+https://stackoverflow.com/questions/41164305/numpy-dot-product-with-max-instead-of-sum
+basically it will be much slower than np.dot.

@@ -232,7 +232,7 @@ class Genome(object):
         self._node_genes.append({
             'id': idnum,
             'layer': layer,
-            'agg_func': 'sum',
+            'agg_func': random.choice(['sum','max']),
             'act_func': act_func_name,
             'act_args': act_func_args
         })
@@ -321,6 +321,13 @@ class Genome(object):
         probs = [m['prob'] for m in self._mutation_types]
         chosen_mutation = np.random.choice(options, p=probs)
         chosen_mutation()  # Execute the chosen mutation.
+
+    def _func_selector(self, which):
+        probs = [a['prob'] for a in self._settings.get(which + '_funcs')]
+        probs = probs / np.sum(probs)  # renormalise probabilities
+        funcs = [a['func'] for a in self._settings.get(which + '_funcs')]
+        chosen = np.random.choice(funcs, p=probs)
+        return chosen
 
     def crossover(self, other: Genome, mut_rate: float = 0) -> Genome:
         """
