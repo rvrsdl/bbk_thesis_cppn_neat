@@ -4,6 +4,7 @@
 Contains various fitness evaluators that can be passed to
 a Population object.
 """
+from abc import ABC, abstractmethod
 from typing import List
 
 import numpy as np
@@ -13,61 +14,59 @@ import tensorflow_hub as hub
 
 from genome import Genome
 from nnet import NNFF
-from image_cppn import Image, CPPN
+from image_cppn import ImageCreator, Image, CPPN
 import tk_display as td
 
 # typing definitions
 Genomes = List[Genome]
 Images = List[Image]
 
-class AbstractEvaluator:
-    
-    def __init__(self, fourier_map_vec=None, bias_vec=None, visible=False):
-        self.fourier_map_vec = fourier_map_vec
-        self.bias_vec = bias_vec
-        self.visible = visible
-        self.gameover = False # We can set this to true to break out of caller loop
-    
-    def run(self, genomes: Genomes, gen_num: int):
+
+class AbstractEvaluator(ABC):
+
+    def __init__(self, image_creator: ImageCreator, visible: bool = False) -> None:
+        self._image_creator = image_creator
+        self._visible = visible
+        self.gameover = False  # We can set this to true to break out of caller loop
+
+    @abstractmethod
+    def run(self, genomes: Genomes, gen_num: int) -> None:
         pass
     
     def show_grid(self, imgs: Images, text: np.array = None, default_scores: np.array = None, gen_num: int = 0) -> np.array:
-        #imgs = self.generate_images(genomes)
         grd = td.ImgGrid(imgs, text=text, n_imgs=28, nrows=4, title="Generation {}".format(gen_num), default_scores=default_scores)
         ratings = grd.run()
         if td.aborted:
             self.gameover = True
         return ratings
     
-    def generate_images(self, genomes: Genomes) -> Images:
+    def _create_images(self, genomes: Genomes) -> Images:
         """
         Any evaluator will need to generate images from the
         genomes so this method can be shared between them.
         """
-        imgs = []
-        for g in genomes:
-            cppn = CPPN(NNFF(g), self.fourier_map_vec)
-            imgs.append( cppn.create_image((128,128), bias=self.bias_vec) )
-        return imgs
-    
+        return [self._image_creator.create_image(g) for g in genomes]
+
+
 class InteractiveEvaluator(AbstractEvaluator):
     
-    def __init__(self, fourier_map_vec=None, bias_vec=None):
+    def __init__(self, image_creator: ImageCreator) -> None:
         # Pass through args to the base class constructor but with show_grid=True
-        super().__init__(fourier_map_vec=fourier_map_vec, bias_vec=bias_vec, visible=True)
+        super().__init__(image_creator, visible=True)
     
     def run(self, genomes: Genomes, gen_num: int) -> None:
-        imgs = self.generate_images(genomes)
+        imgs = self._create_images(genomes)
         default_scores = np.array([g.get_fitness() for g in genomes])
         ratings = self.show_grid(imgs, default_scores=default_scores, gen_num=gen_num)
         # Now set the genome fitnesses according to the ratings
-        for g,r in zip(genomes, ratings):
+        for g, r in zip(genomes, ratings):
             g.metadata['fitness'] = r
+
 
 class PixelDiffEvaluator(AbstractEvaluator):
     
-    def __init__(self, target_img: Image = None, fourier_map_vec=None, bias_vec=None, visible=False):
-        super().__init__(fourier_map_vec=fourier_map_vec, bias_vec=bias_vec, visible=visible)
+    def __init__(self, image_creator: ImageCreator, target_img: Image = None, visible=False) -> None:
+        super().__init__(image_creator, visible=visible)
         if target_img is None:
             self.target_img = self.get_default_target()
         else:
@@ -77,14 +76,12 @@ class PixelDiffEvaluator(AbstractEvaluator):
         self.pixels = self.target_img.size[0] * self.target_img.size[0] * 1
 
     def run(self, genomes: Genomes, gen_num: int) -> None:
-        imgs = self.generate_images(genomes)
+        imgs = self._create_images(genomes)
         ratings = [self.dist_rating(img) for img in imgs]
-        if self.visible:
-            # WARNING: by keeping the return variable we are allowing the user to modify
-            # the automatic ratings.
+        if self._visible:
             user_ratings = self.show_grid(imgs, default_scores=ratings, gen_num=gen_num)
             if user_ratings:
-                ratings = user_ratings # WARNING: this allows user to modify default ratings
+                ratings = user_ratings  # WARNING: this allows user to modify default ratings
         # Now set the genome fitnesses according to the ratings
         for g,r in zip(genomes, ratings):
             g.metadata['fitness'] = r
@@ -104,8 +101,9 @@ class PixelDiffEvaluator(AbstractEvaluator):
             # TODO 
             pass
         return rating*100
-    
-    def get_default_target(self) -> Image:
+
+    @staticmethod
+    def get_default_target() -> Image:
         """ 
         Returns a quartered checkerboard image.
         """
@@ -115,7 +113,8 @@ class PixelDiffEvaluator(AbstractEvaluator):
         right = np.concatenate((zeros,ones), axis=0)
         out = np.concatenate((left,right), axis=1)
         return Image(out)
-        
+
+
 class PixelPctEvaluator(PixelDiffEvaluator):
     
     def pct_ok(self, img: Image) -> float:
@@ -149,11 +148,6 @@ class PixelPctEvaluator(PixelDiffEvaluator):
             img_major_diff_loc = img.diff().data >= thresh
             # Jaccard coeff ie. intersection over union??
             rating = jaccard(tgt_major_diff_loc, img_major_diff_loc)
-
-            #also_major = np.sum( img.diff().data[major_diff_loc] >= thresh )
-            #rating = also_major / np.sum(major_diff_loc)
-            #num_ok = np.sum(np.abs(self.target_img.diff().data.ravel() - img.diff().data.ravel()) <= thresh)
-            #rating = num_ok / self.pixels
         elif self.channels == 3:
             # TODO
             pass
@@ -164,8 +158,9 @@ class PixelPctEvaluator(PixelDiffEvaluator):
         Just using 50/50 normal and diff pct
         """
         # NB rating is expected to be between 0 and 100
-        return (self.pct_ok(img)*20) + (self.diff_pct_ok(img)*80)
-        
+        return (self.pct_ok(img)*50) + (self.diff_pct_ok(img)*50)
+
+
 class ImageNetEvaluator(AbstractEvaluator):
     """
     Introducing a "fade factor". Images where the most likely 
@@ -180,37 +175,33 @@ class ImageNetEvaluator(AbstractEvaluator):
     # This would mean we wouldn't discard the info of 2nd/3rd etc. most likely.
     # Aaand we could try selecting for LOW HHI, ie. most uncertainty about category.
     # Would probably select for blobs, but might be interesting (like CAN networks selecting for uncertain style.)
-    def __init__(self, fade_factor=1, channels=3, fourier_map_vec=None, bias_vec=None, visible=False):
-        super().__init__(fourier_map_vec=fourier_map_vec, bias_vec=bias_vec, visible=visible)
-        self.channels = channels
-        self.fade_factor = fade_factor
-        self.class_seen = dict() # To keep track of how many times we have seen each class
-        self.model = tf.keras.Sequential([
+    def __init__(self, image_creator: ImageCreator, fade_factor: float = 1, visible: bool = False) -> None:
+        super().__init__(image_creator, visible=visible)
+        self._fade_factor = fade_factor
+        self._class_seen = dict()  # To keep track of how many times we have seen each class
+        self._model = tf.keras.Sequential([
             hub.KerasLayer("https://tfhub.dev/google/imagenet/mobilenet_v1_100_128/classification/4")
             ])
-        self.model.build([None, 128, 128, self.channels])  # Batch input shape.
+        self.model.build([None, 128, 128, self._image_creator.channels])  # Batch input shape.
         # load class labels
-        f = open("ImageNetLabels.txt", "r")
-        self.class_labels = np.array([line.strip() for line in f.readlines()])
-        f.close()
+        with open("ImageNetLabels.txt", "r") as f:
+            self._class_labels = np.array([line.strip() for line in f.readlines()])
         
     def run(self, genomes: Genomes, gen_num: int) -> None:
-        imgs = self.generate_images(genomes)
-        model_input = self.imgs2tensor(imgs) # turn it into a tensor
-        logits = self.model(model_input)
+        imgs = self._create_images(genomes)
+        model_input = self.imgs2tensor(imgs)  # turn it into a tensor
+        logits = self._model(model_input) # use the model
         probs = np.array(tf.nn.softmax(logits))
-        max_idx = np.argmax(probs, axis=1)
+        max_idx = np.argmax(probs, axis=1) # TODO: or arghhi
         best_probs = probs[np.arange(len(probs)), max_idx]
-        best_labels = self.class_labels[max_idx]
+        best_labels = self._class_labels[max_idx]
         for lab in best_labels:
             # Each time we see a winning label, compound the fade factor for that class
             # (class fades are initialised to 1 if not already in dictionary)
-            self.class_seen[lab] = self.class_seen.setdefault(lab, 0) + 1
-        print(self.class_seen) # temporary for info
-        multiplier = np.array([self.fade_factor ** self.class_seen[l] for l in best_labels])
+            self._class_seen[lab] = self._class_seen.setdefault(lab, 0) + 1
+        multiplier = np.array([self._fade_factor ** self._class_seen[l] for l in best_labels])
         ratings = best_probs * multiplier * 100 # *100 because ratings need to be in range 0-100
-        # TODO would be nice to display the prob and labels on the image grid.
-        if self.visible:
+        if self._visible:
             text = ['{:.12}: {:.0f}%'.format(l,p*100) for (l,p) in zip(best_labels, best_probs)]
             user_ratings = self.show_grid(imgs, text=text, default_scores=ratings, gen_num=gen_num)
             if user_ratings:
@@ -230,10 +221,19 @@ class ImageNetEvaluator(AbstractEvaluator):
         an RGB image.
         """
         return tf.stack([i.data for i in imgs])
-    
-def jaccard(a,b):
+
+
+def jaccard(a, b):
     """
     Returns Jaccard coefficient of two boolean numpy arrays 
     of the same size ie. sum(a & b) / sum(a | b )
     """
     return np.sum(a & b) / np.sum(a | b)
+
+
+def hhi(a: np.ndarray, axis: int) -> np.ndarray:
+    """
+    Calculates the Herfindahl-Hirschman Index (a measure of concentration)
+    along the axis specified.
+    """
+    return np.square(a/a.sum(axis=axis)).sum(axis=axis)

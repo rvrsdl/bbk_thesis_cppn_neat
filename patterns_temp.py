@@ -14,13 +14,14 @@ from population import Population
 
 #client code
 def main():
-    with open('config.yaml','r') as f: #TODO: allow any config file to be passed in
+    with open('config.yaml', 'r') as f:  # TODO: allow any config file to be passed in
         CFG = yaml.safe_load(f)
-    # set up stuff pseudocode
         
-    #image_creator
+    # set up components
     image_creator = ImageCreator(**CFG['image_settings']) # poor style? Use another builder? 
-    
+    seed_genome = Genome(image_creator.n_in, image_creator.n_out, **CFG['genome_settings'])
+    population = Population(seed_genome=seed_genome, **CFG['population_settings'])
+
     # evaluator
     evaluation = CFG['evaluation'].lower()
     if evaluation == 'interactive':
@@ -30,9 +31,11 @@ def main():
         target = Image.load(CFG['target_img'], CFG['image_settings']['colour_channels'])
         evaluator = PixelPctEvaluator(image_creator, target_img=target, visible=CFG['visible'])
     elif evaluation == 'imagenet':
-        evaluator = ImageNetEvaluator(image_creator, fade_factor = 0.98, visible=CFG['visible']) #TODO: fade_factor magic number - could load from config??
+        evaluator = ImageNetEvaluator(image_creator, fade_factor=0.98, visible=CFG['visible']) #TODO: fade_factor magic number - could load from config??
+
+    population.run(evaluator=evaluator, generations=CFG['max_generations'])
+
     
-    seed_genome = 
     
     # seed genome
     gb = GenomeBuilder()
@@ -105,7 +108,7 @@ class PopulationBuilder(object):
     def set_breed_method(self, breed_method: str) -> None:
         self._population.breed_method = breed_method
         
-    def set_seed_genom(self, seed: Genome) -> None:
+    def set_seed_genome(self, seed: Genome) -> None:
         self._population.seed_genome = seed
         
 

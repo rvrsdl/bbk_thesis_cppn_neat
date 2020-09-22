@@ -5,13 +5,17 @@
 # Could do some of this as command_line options.
 visible: True
 evaluation: interactive # / target / imagenet
+max_generations: 50
 
-population_size: 28
+population_settings:
+    size: 28
+    mutation_rate: 0.5
+    brred_method: selected # / total / species
 
 image_settings:
-    colour_channels: 3,
-    bias_length: 4,
-    fourier_features: 11
+    colour_channels: 3
+    bias_length: 1
+    fourier_features: 0
 
 target_image: 'duck_bw_128.png'
 
@@ -35,6 +39,7 @@ genome_settings:
         - {func: add_connection, prob: 0.3}
         - {func: add_node, prob: 0.1}
         - {func: disable_connection, prob: 0.1}
+    disable_prob: 0.6
 
 save_location: '/home/riversdale/Documents/MSc/thesis/rw_neat/output/'
 save_size: 512

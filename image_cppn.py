@@ -28,17 +28,15 @@ class ImageCreator(object):
         self.bias_vec = np.random.normal(size=bias_length)
         if fourier_features:
             self.fourier_map_vector = fourier.initialize_fourier_mapping_vector(n_features=fourier_features)
-            self.n_in = (fourier_features*2) + bias_length
         else:
             self.fourier_map_vector = None
-            self.n_in = 3 + bias_length
         
-        
-    def create_image(self, genome: Genome, size=128):
+    def create_image(self, genome: Genome, size=128) -> Image:
         cppn = CPPN(NNFF(genome), self.fourier_map_vec)
         img = cppn.create_image( (size,size), bias=self.bias_vec)
         img.genome = genome # The image has a reference to its own genome
         img.creator = self # give it a ref to the creator in case we need to upscale it.
+        return img
 
     @property
     def n_in(self):

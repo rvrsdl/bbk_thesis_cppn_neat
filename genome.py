@@ -1,8 +1,7 @@
-from __future__ import annotations # enables type hints of self object
+from __future__ import annotations  # enables type hints of self object
 import random
 import datetime
 import json
-import yaml
 
 import numpy as np
 
@@ -10,10 +9,7 @@ import funcs
 
 INNOV = 0
 CONN_DICT = dict()
-#NODE_DICT = dict()
 
-with open('config.yaml','r') as f:
-    CONFIG = yaml.safe_load(f)
 
 class Genome(object):
     """
@@ -23,8 +19,9 @@ class Genome(object):
     def __init__(self, n_in: int, n_out: int, recurrent: bool = False,
                  verbose: bool = False, init_conns: bool = True, **kwargs):
         """
-        Initialise the genes for the basic network in which each output node is connected
-        to a random selection of between one and all the input nodes.
+        Initialise the genes for the basic network in which each output node
+        is connected to a random selection of between one and all the input
+        nodes.
         :param n_in: Number of input nodes (including bias)
         :param n_out: Number of output nodes.
         :param recurrent: Whether the network is allowed to be recurrent.
@@ -35,28 +32,29 @@ class Genome(object):
         self.n_out = n_out
         self.recurrent = recurrent
         self.verbose = verbose
-        self.metadata = {'fitness': 0} # For any extra info we may want to attach to the genome. Init fitness to zero.
-        
+        self.metadata = {'fitness': 0}  # For any extra info we may want to attach to the genome. Init fitness to zero.
+
         # Set private attributes
         defaults = self._default_settings()
         self._activation_funcs = kwargs.get('activation_funcs', defaults.get('activation_funcs'))
         self._output_funcs = kwargs.get('output_funcs', defaults.get('output_funcs'))
         self._mutation_types = kwargs.get('mutation_types', defaults.get('mutation_types'))
         self._disable_prob = kwargs.get('disable_prob', defaults.get('disable_prob'))
-        
+
         # Create a list of input and output node genes
         self._node_genes = []
         for i in range(n_in):
-            self._create_node_gene(i,'input')
-        for i in range(n_in, n_in+n_out):
-            self._create_node_gene(i,'output')
-        
+            self._create_node_gene(i, 'input')
+        for i in range(n_in, n_in + n_out):
+            self._create_node_gene(i, 'output')
+
         # Create a list of connection genes
         self._conn_genes = []
-        if init_conns: # TODO - this seems weird.
+        if init_conns:  # TODO - this seems weird.
             self.init_conns()
-            
-    def _default_settings(self) -> dict:
+
+    @staticmethod
+    def _default_settings() -> dict:
         """
         Returns a dict of defualt settings for use in __init__
         in case explicit settings aren't provided.
@@ -74,19 +72,7 @@ class Genome(object):
             'disable_prob': 0.6
         }
         return settings
-    
-    def _get_settings_dict(self) -> dict:
-        """
-        Packs this genomes settings into a dict which can then be used for 
-        initialising a child Genome during crossover.
-        """
-        settings = {
-            'activation_funcs': self._activation_funcs,
-            'output_funcs': self._output_funcs,
-            'mutation_types': self._mutation_types
-            }
-        return settings
-        
+
     def init_conns(self) -> None:
         """
         Initialises connections between the input and output nodes.
@@ -98,22 +84,22 @@ class Genome(object):
         inp_ids = self.get_node_ids('input')
         for o_n in self.get_node_ids('output'):
             n_conns = random.randint(1, len(inp_ids))
-            #chosen_inputs = np.random.choice(inp_ids, n_conns, replace=False)
             chosen_inputs = random.sample(inp_ids, n_conns)
             for i_n in chosen_inputs:
-                if self.verbose: print('Connecting node %d to node %d' % (i_n, o_n))
-                self._make_connection((i_n, o_n))
-                
+                if self.verbose:
+                    print('Connecting node %d to node %d' % (i_n, o_n))
+                self._create_conn_gene((i_n, o_n))
+
     def get_node_ids(self, layer: str = 'all') -> list:
         """
         Returns the node ID numbers in a particular layer (input, hidden or 
         output)
         """
-        if layer=='all':
+        if layer == 'all':
             return [n['id'] for n in self._node_genes]
         else:
             return [n['id'] for n in self._node_genes if n['layer'] == layer]
-    
+
     def get_conn_ids(self, only_enabled: bool = False) -> list:
         """
         Returns the connection ID numbers (aka the innovation numbers).
@@ -123,27 +109,27 @@ class Genome(object):
             return [c['innov'] for c in self._conn_genes if c['enabled']]
         else:
             return [c['innov'] for c in self._conn_genes]
-    
+
     def get_conn_gene(self, innov: int) -> dict:
         """
         Returns the information dict of a particular connection gene.
         """
-        found = [g for g in self._conn_genes if g['innov']==innov]
+        found = [g for g in self._conn_genes if g['innov'] == innov]
         if found:
-            return found[0] # take it out of list
+            return found[0]  # take it out of list
         else:
             raise ValueError('Innovation {} not found'.format(innov))
-            
+
     def get_node_gene(self, idnum: int) -> dict:
         """
         Returns the information dict of a particula node gene.
         """
-        found = [g for g in self._node_genes if g['id']==idnum]
+        found = [g for g in self._node_genes if g['id'] == idnum]
         if found:
             return found[0]
         else:
             raise ValueError('Innovation {} not found'.format(idnum))
-    
+
     def get_connections(self, only_enabled: bool = True) -> set:
         """
         Returns a set of tuples of connected nodes: (from, to)
@@ -162,16 +148,16 @@ class Genome(object):
         This means that when the node is first added it should have no effect.
         The original connection is kept but disabled.
         """
-        chosen_gene = random.sample(self.conn_genes, 1)[0]
+        chosen_gene = random.sample(self._conn_genes, 1)[0]
         # Create the new node
-        new_node_id = len(self.node_genes)
+        new_node_id = len(self._node_genes)
         self._create_node_gene(new_node_id, 'hidden')
         # Reorganise the connections
         self._create_conn_gene((chosen_gene['from'], new_node_id), wgt=1)
         self._create_conn_gene((new_node_id, chosen_gene['to']), wgt=chosen_gene['wgt'])
         # Disable the original connection
         chosen_gene['enabled'] = False
-    
+
     def add_connection(self) -> None:
         """
         Adds a connection gene, creating a connection from the pool of unused 
@@ -182,13 +168,13 @@ class Genome(object):
         """
         existing_conns = self.get_connections(only_enabled=False)
         all_possible_conns = {(u['id'], v['id']) for u in self._node_genes for v in self._node_genes
-                          if u['id'] != v['id'] # can't connect a node to itself
-                          and v['layer'] != 'input' # can't connect TO an input node
-                          and u['layer'] != 'output'} # can't connect FROM an output layer
+                              if u['id'] != v['id']  # can't connect a node to itself
+                              and v['layer'] != 'input'  # can't connect TO an input node
+                              and u['layer'] != 'output'}  # can't connect FROM an output layer
         available_conns = all_possible_conns - existing_conns
         if self.verbose: print('Available connections: ' + str(available_conns))
 
-        if not(self.recurrent):
+        if not self.recurrent:
             cycle_conns = set(filter(self._check_for_cycle, available_conns))
             available_conns = available_conns - cycle_conns
             if self.verbose: print("Which wouldn't create a cycle: " + str(available_conns))
@@ -196,7 +182,7 @@ class Genome(object):
         if available_conns:
             chosen = random.sample(available_conns, 1)[0]
             if self.verbose: print('We chose: ' + str(chosen))
-            self._create_connection(chosen) # Actually add a new connection gene
+            self._create_conn_gene(chosen)  # Actually add a new connection gene
         else:
             print('No new connections possible')
 
@@ -209,7 +195,7 @@ class Genome(object):
         _from, _to = candidate
         if _from == _to:
             return True
-        
+
         seen = {_to}
         while True:
             num_added = 0
@@ -239,13 +225,13 @@ class Genome(object):
             act_func_args = funcs.create_args(funcs.get_funcs(act_func_name))
         self._node_genes.append({
             'id': idnum,
-            'layer': 'output',
+            'layer': layer,
             'agg_func': 'sum',
             'act_func': act_func_name,
             'act_args': act_func_args
         })
-    
-    def _create_conn_gene(self, path, wgt: float = None) -> None:
+
+    def _create_conn_gene(self, path: tuple, wgt: object = None) -> None:
         """
         Appends a connection to self._conn_genes using the 
         appropriate innovation number (incremented if
@@ -254,9 +240,11 @@ class Genome(object):
         """
         global INNOV
         global CONN_DICT
-        if wgt==None: wgt = np.random.uniform(-5,5) # TODO np.random.normal() # From the normal distribution
+        if wgt is None:
+            wgt = np.random.uniform(-5, 5)
+            # TODO: was using np.random.normal() # From the normal distribution
         if path in CONN_DICT:
-                innov = CONN_DICT[path]
+            innov = CONN_DICT[path]
         else:
             innov = INNOV
             CONN_DICT[path] = innov
@@ -266,10 +254,10 @@ class Genome(object):
             'innov': innov,
             'from': path[0],
             'to': path[1],
-            'wgt': wgt,  
+            'wgt': wgt,
             'enabled': True
         })
-        
+
     def _disable_random_conn(self) -> None:
         """
         A mutation which disables a random connection gene.
@@ -282,35 +270,36 @@ class Genome(object):
         # That way we shouldn't get any stranded nodes.
         # We might need to go through all the connections to find one that is 
         # ok to delete.
-        chosen_genes = random.sample(self.conn_genes, len(self.conn_genes)) # get a shuffled list of the connection genes
+        chosen_genes = random.sample(self._conn_genes,
+                                     len(self._conn_genes))  # get a shuffled list of the connection genes
         to_connections = np.array([t[1] for t in self.get_connections()])
         for cg in chosen_genes:
-            if np.sum( to_connections == cg['to']) >=2:
+            if np.sum(to_connections == cg['to']) >= 2:
                 cg['enabled'] = False
                 break
         if self.verbose: print('No disable-able connection found')
-    
+
     def _alter_weight(self, n_to_alter: int = 1) -> None:
         """
         A mutation which alters the weight of one or maore random connection
         genes. It peturbs the weight by an amount selected from the normal
         distribution. This will usually be the most common type of mutation.
         """
-        chosen = random.sample(self.conn_genes, n_to_alter)
+        chosen = random.sample(self._conn_genes, n_to_alter)
         for conn in chosen:
             # peturb by a number selected from the normal distribution.
             conn['wgt'] += float(np.random.normal())
-    
+
     def _flip_weight(self, n_to_flip: int = 1) -> None:
         """
         A mutation which inverts (positive/negative) the weight of one or more
         random connection genes. Should be a fairly rare mutation.
         """
-        chosen = random.sample(self.conn_genes, n_to_flip)
+        chosen = random.sample(self._conn_genes, n_to_flip)
         for conn in chosen:
             # flip the sign
             conn['wgt'] = -conn['wgt']
-        
+
     def mutate(self):
         """
         Applies one of the mutation types based on the probabilities set
@@ -319,14 +308,14 @@ class Genome(object):
         # Make a func dict mapping from the mutation type names to the actual functions
         func_dict = {'alter_wgt': self._alter_weight,
                      'flip_wgt': self._flip_weight,
-                     'add_connection': self._add_connection,
-                     'add_node': self._add_node,
+                     'add_connection': self.add_connection,
+                     'add_node': self.add_node,
                      'disable_connection': self._disable_random_conn}
         options = [func_dict[m['func']] for m in self._mutation_types]
         probs = [m['prob'] for m in self._mutation_types]
         chosen_mutation = np.random.choice(options, p=probs)
-        chosen_mutation() # Execute the chosen mutation.
-    
+        chosen_mutation()  # Execute the chosen mutation.
+
     def crossover(self, other: Genome, mut_rate: float = 0) -> Genome:
         """
         Creates an offspring genome from this and another parent.
@@ -336,7 +325,7 @@ class Genome(object):
         decreasing chance of multiple mutations:  if mut_rate is 0.5 then the 
         chance of one mutation is 0.5, of two is 0.25, of three is 0.125 etc.
         """
-        child = self._empty() # Create a child genome with no connections and the same settings as this one
+        child = self._empty()  # Create a child genome with no connections and the same settings as this one
         # Choose and add the connection genes
         self_innovs = self.get_conn_ids()
         other_innovs = other.get_conn_ids()
@@ -351,8 +340,8 @@ class Genome(object):
                         options = [opt1, opt2]
                     else:
                         # We need to check if either option would create a cycle in the child
-                        opt1_ok = not( child._check_for_cycle((opt1['from'], opt1['to'])) )
-                        opt2_ok = not( child._check_for_cycle((opt2['from'], opt2['to'])) )
+                        opt1_ok = not (child._check_for_cycle((opt1['from'], opt1['to'])))
+                        opt2_ok = not (child._check_for_cycle((opt2['from'], opt2['to'])))
                         options = []
                         if opt1_ok: options.append(opt1)
                         if opt2_ok: options.append(opt2)
@@ -361,9 +350,10 @@ class Genome(object):
                     else:
                         print('Neither parent gene inherited as either would create a cycle')
                         continue
-                    if not(opt1['enabled']) or not(opt2['enabled']):
-                        # Stanley: "there’s a preset chance that an inherited gene is disabled if it is disabled in either parent."
-                        if random.random()<self._disable_prob: # hard coded 60% chance. not ideal.
+                    if not (opt1['enabled']) or not (opt2['enabled']):
+                        # Stanley: "there’s a preset chance that an inherited gene is disabled
+                        # if it is disabled in either parent."
+                        if random.random() < self._disable_prob:  # hard coded 60% chance. not ideal.
                             chosen['enabled'] = False
                 else:
                     # Innovation is only in the "self" parent
@@ -372,13 +362,13 @@ class Genome(object):
                 # Innovation is only in the "other" parent
                 chosen = other.get_conn_gene(i).copy()
             # Check the proposed doesn't create a cycle in the child
-            chosen_ok = not( child._check_for_cycle((chosen['from'], chosen['to'])) ) if not(child.recurrent) else True
+            chosen_ok = not (child._check_for_cycle((chosen['from'], chosen['to']))) if not child.recurrent else True
             if chosen_ok:
-                child.conn_genes.append(chosen)
+                child._conn_genes.append(chosen)
             else:
                 print('Gene not inherited as would create cycle')
         # Now create the node genes based on what we need
-        conns = child.get_connections(only_enabled=False) # list of (from,to) tuples
+        conns = child.get_connections(only_enabled=False)  # list of (from,to) tuples
         need_nodes = np.unique(list(conns))
         have_nodes = child.get_node_ids()
         self_hidden_node_ids = self.get_node_ids(layer='hidden')
@@ -397,13 +387,13 @@ class Genome(object):
                 # it should already have been initialised in the child.
                 assert n in have_nodes, "Node {} isn't in child".format(n)
                 continue
-            child.node_genes.append(chosen.copy())
-        while random.random()<mut_rate:
+            child._node_genes.append(chosen.copy())
+        while random.random() < mut_rate:
             # NB this is a WHILE not an IF. So if mut_rate is 0.5 then the 
             # chance of one mutation is 0.5, of 2 is 0.25, of 3 is 0.125 etc.
             child.mutate()
         return child
-    
+
     def get_fitness(self, raw: bool = False) -> float:
         """
         Returns the fitness of the genome. Optionally returns the raw_fitness
@@ -422,43 +412,43 @@ class Genome(object):
         Shouldn't be used during an evolutionary run, but it is useful for
         testing.
         """
-        for g in self.conn_genes:
+        for g in self._conn_genes:
             g['wgt'] = np.random.normal()
-            
+
     def _empty(self) -> Genome:
         """
         Returns a genome with the same settings as this one but does not
         initiate any connections. Used by crossover method.
         """
-        return Genome(self.n_in, self.n_out, init_conns=False, 
-               recurrent=self.recurrent, verbose=self.verbose, 
-               activation_funcs=self._activation_funcs,
-               output_funcs=self._output_funcs,
-               mutation_types=self._mutation_types,
-               disable_prob=self._disable_prob)
+        return Genome(self.n_in, self.n_out, init_conns=False,
+                      recurrent=self.recurrent, verbose=self.verbose,
+                      activation_funcs=self._activation_funcs,
+                      output_funcs=self._output_funcs,
+                      mutation_types=self._mutation_types,
+                      disable_prob=self._disable_prob)
 
     def save(self, filename: str = None) -> None:
         if not filename:
             filename = "./output/genome_" + datetime.datetime.now().strftime("%d%b%Y_%I%p%M") + '.json'
         with open(filename, 'w') as savefile:
-            json.dump([self.node_genes, self.conn_genes], savefile)
-            
+            json.dump([self._node_genes, self._conn_genes], savefile)
+
     @staticmethod
     def load(filename: str) -> Genome:
         with open(filename, 'r') as loadfile:
             data = json.load(loadfile)
-        g = Genome(0,0,init_conns=False) # self.n_in and self.n_out will be wrong!
+        g = Genome(0, 0, init_conns=False)  # self.n_in and self.n_out will be wrong!
         g.node_genes = data[0]
         g.conn_genes = data[1]
         g.n_in = len(g.get_node_ids('input'))
         g.n_out = len(g.get_node_ids('output'))
         return g
-    
+
     def __str__(self):
         # out_str = ['%d: [%d]--%0.2f-->[%d]' % (g['innov'], g['from'], g['wgt'], g['to']) 
         #            for g in self.conn_genes if g['enabled']
         #            else '%d: [%d]--%0.2f-->[%d] (DISABLED)' % (g['innov'], g['from'], g['wgt'], g['to'])]
         out_str = ["{:d}: [{:d}]--{:0.2f}-->[{:d}] {active}"
-                   .format(g['innov'], g['from'], g['wgt'], g['to'], active='' if g['enabled'] else '(DISABLBED)')
-                   for g in self.conn_genes]
+                       .format(g['innov'], g['from'], g['wgt'], g['to'], active='' if g['enabled'] else '(DISABLBED)')
+                   for g in self._conn_genes]
         return '\n'.join(out_str)
