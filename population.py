@@ -33,15 +33,19 @@ class Population(object):
         Whole population needs to spring from sinle individual so that
         innovation numbers are shared.
         """
+        self.generation = 1
         first_gen = [copy.deepcopy(self._seed) for i in range(self.popsize)]
         # To get a bit of diversity in the initial population we will
         # give each one an extra node, and randomise the weights.
+        i=1
         for g in first_gen:
             g.add_node()
             g.add_connection()
             g.randomise_weights()
+            g.metadata['name'] = 'gen{}_{}'.format(self.generation, i)
+            i += 1
         self.this_gen = first_gen
-        self.generation = 1
+
 
     def _breed_next_gen(self) -> None:
         """
@@ -56,6 +60,7 @@ class Population(object):
         TODO: implement species so that breeding only takes place
         between members of the same species.
         """
+        self.generation += 1
         if self.breed_method == 'species':
             # TODO: complete this.
             species = self.species_divide()
@@ -74,7 +79,13 @@ class Population(object):
             self.this_gen.sort(key=lambda g: g.get_fitness(), reverse=True)
             selected = self.this_gen[:self._n_breed]
             pairings = itertools.combinations(selected, 2)  # finds all possible combos of 2
-            offspring = [p1.crossover(p2, mut_rate=self.mutation_rate) for p1, p2 in pairings]
+            offspring = []
+            i = 1
+            for p1, p2 in pairings:
+                child = p1.crossover(p2, mut_rate=self.mutation_rate)
+                child.metadata['name'] = 'gen{}_{}'.format(self.generation, i)
+                i += 1
+                offspring.append(child)
         elif self.breed_method == 'selected':
             # Breed only from the selected individuals (fitness>10)
             selected = [g for g in self.this_gen if g.get_fitness() >= 10]
@@ -82,20 +93,20 @@ class Population(object):
             if len(selected) < 2:
                 print('WARNING: You must select at least two individuals')
                 print('Please try again')
-                return None
-                # ie. keep this_gen the same and don't increase the
-                # generation numbers, so the user can try again.
+                self.generation -= 1  # Undo the increment to the generation number
+                return None # We haven't updated this_gen so the user just tries again.
             pairings = list(itertools.combinations(selected, 2))  # finds all possible combos of 2
             offspring = selected # keep the chosen ones
             for i in range(self.popsize - len(selected)):
                 idx = i % len(pairings)  # so we can go round again if we need to
                 p1 = pairings[idx][0]
                 p2 = pairings[idx][1]
-                offspring.append(p1.crossover(p2, mut_rate=self.mutation_rate))
+                child = p1.crossover(p2, mut_rate=self.mutation_rate)
+                child.metadata['name'] = 'gen{}_{}'.format(self.generation, i)
+                offspring.append(child)
                 
         # Set this_gen to the offspring and increment the generation number. 
         self.this_gen = offspring
-        self.generation += 1
         print(self)
     
     def _species_divide(self) -> dict:
@@ -121,7 +132,7 @@ class Population(object):
         return species_dict
 
     @staticmethod
-    def _need_to_breed(self, popsize):
+    def _need_to_breed(popsize):
         """
         Returns the minimum number of individuals who need to breed
         (all pairwaise combinations of those individuals) to create

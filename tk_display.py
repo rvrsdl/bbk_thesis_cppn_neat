@@ -4,9 +4,11 @@ Using Tkinter to display/select images.
 import glob
 import random
 import re
+from typing import List, Union
 
 import tkinter as tk
 from PIL import ImageTk, Image
+from image_cppn import Image as MyImage
 import numpy as np
 
 import cppn
@@ -15,30 +17,33 @@ aborted = False
 
 class ImgGrid(object):
     
-    def __init__(self, path_or_arrays, text=None, n_imgs=35, nrows=5, ncols=7, title="Image Grid", default_scores=None):
+    def __init__(self, path_or_arrays: Union[str, List[MyImage]], text: List[str] = None,
+                 n_imgs: int = 35, nrows: int = 5, ncols: int = 7, title: str = "Image Grid",
+                 default_scores: List[int] = None):
         """
         Produces a grid of images from saved PNG files.
         Pass in a path name (with wildcards eg. output/*.png)
         to display a batch of images.
         """
-        self.root = tk.Tk()
-        self.nrows = nrows
-        self.ncols = ncols
-        self.imgs = [] # to hold ImageTk.PhotoImage
-        self.labels = [] # to hold tk.Label
-        self.sliders = [] # to hold tk.Scale
-        self.slider_visible = [] # True if image is showing
-        self.scores = []
+        self.root: tk.Tk = tk.Tk()
+        self.nrows: int = nrows
+        self.ncols: int = ncols
+        self.imgs_rw: List[MyImage] = []
+        self.imgs_tk: List[ImageTk.PhotoImage] = []
+        self.labels: List[tk.Label] = []
+        self.sliders: List[tk.scale] = []
+        self.slider_visible: List[bool] = []
+        self.scores: List[float] = []
         self.root.title(title)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
-        if type(path_or_arrays)==str:
+        if type(path_or_arrays) == str:
             from_saved = True
             # Use glob to turn wildcard string into list of paths.
             filenames = glob.glob(path_or_arrays)[:n_imgs]
             random.shuffle(filenames)
             n_imgs = min([n_imgs, len(filenames)])
-        elif type(path_or_arrays)==list:
+        elif type(path_or_arrays) == list:
             from_saved = False
             n_imgs = min([n_imgs, len(path_or_arrays)])
         else:
@@ -50,15 +55,15 @@ class ImgGrid(object):
             r, c = divmod(i, self.ncols)
             if from_saved:
                 f = filenames[i]
-                self.imgs.append( ImageTk.PhotoImage(Image.open(f)) ) #, master=root
+                this_img = ImageTk.PhotoImage(Image.open(f))  #, master=root
             else:
-                a = path_or_arrays[i]
-                #mode = 'RGB' if a.shape[-1]==3 else 'L'
-                #self.imgs.append( ImageTk.PhotoImage(image=Image.fromarray(np.uint8(a*255),mode=mode)) ) #, master=root
-                self.imgs.append( self.to_image_tk(a) )
+                im = path_or_arrays[i]
+                self.imgs_rw.append(im)
+                this_img = self.to_image_tk(im)
             #lab = tk.Label(root, image = imgs[i], borderwidth=2, relief='solid')
-            lab = tk.Label(self.root, image=self.imgs[i], text=text[i], compound='top')
-            lab.grid(row = r, column = c, padx = 1, pady = 1)
+            self.imgs_tk.append(this_img)  # TKinter requires us to keep a list of images (even though we don't refer to it in the code).
+            lab = tk.Label(self.root, image=this_img, text=text[i], compound='top')
+            lab.grid(row=r, column=c, padx=1, pady=1)
             self.labels.append(lab)
             slider = tk.Scale(self.root)
             if default_scores is not None:
@@ -70,14 +75,15 @@ class ImgGrid(object):
             #lab.bind("<Button-1>", func = lambda e,l=lab: l.focus_set() )
             #lab.bind("<Button-1>", func = lambda e,l=lab: l.config(text = 'hello') )
             if from_saved:
-                lab.bind("<Button-1>", func = lambda e,f=f: self.show_hi_res(f) )
+                lab.bind("<Button-1>", func=lambda e, f=f: self.show_hi_res(f)) # TODO
             else:
                 #lab.bind("<Button-1>", func = lambda e,l=lab: self.toggle_border(l), add='+' )
-                lab.bind("<Button-1>", func = lambda e,s=self.sliders[i]: s.set(s.get()+10), add='+' )
-                lab.bind("<Button-3>", func = lambda e,s=self.sliders[i]: s.set(s.get()-10), add='+' )
+                lab.bind("<Button-1>", func=lambda e, s=self.sliders[i]: s.set(s.get()+10), add='+')
+                lab.bind("<Button-3>", func=lambda e, s=self.sliders[i]: s.set(s.get()-10), add='+')
+                lab.bind("<Double-Button-1>", func=lambda e, k=self.imgs_rw[i]: self.show_hi_res(k))
         # Now add some buttons at the bottom
-        b3 = tk.Button(self.root, text="Zero Scores", command=self.zero_scores)
-        b3.grid(row=nrows+1, column=ncols-4)
+        b4 = tk.Button(self.root, text="Zero Scores", command=self.zero_scores)
+        b4.grid(row=nrows+1, column=ncols-4)
         b3 = tk.Button(self.root, text="Show Scores", command=self.show_all_sliders)
         b3.grid(row=nrows+1, column=ncols-3)
         b2 = tk.Button(self.root, text="Hide Scores", command=self.hide_all_sliders)
@@ -86,9 +92,9 @@ class ImgGrid(object):
         b1.grid(row=nrows+1, column=ncols-1)
         self.check_scores_apply_border(repeat=False)
             
-    def to_image_tk(self, img) -> ImageTk:
+    def to_image_tk(self, img: MyImage) -> ImageTk:
         mode = 'RGB' if img.channels == 3 else 'L'
-        return ImageTk.PhotoImage(image=Image.fromarray(np.uint8(img.data*255),mode=mode))
+        return ImageTk.PhotoImage(image=Image.fromarray(np.uint8(img.data*255), mode=mode))
         
     def run(self):
         """
@@ -164,30 +170,28 @@ class ImgGrid(object):
         the window (ending the main loop which was launched in
         self.run() )
         """
-        for s in self.sliders:
-            self.scores.append(s.get())
+        self.scores = [s.get() for s in self.sliders]
         self.root.destroy() # Closes the window.
-        
-    # Obsolete because doing this in init.
-    # def set_sliders(self, scores):
-    #     """
-    #     Sets all the sliders to the specified scores.
-    #     For use with an automatic evaluator when in debug
-    #     mode so that you can see the scores it has assigned
-    #     each image.
-    #     """
-    #     for slider, score in zip(self.sliders, scores):
-    #         slider.set(score)
-            
-    def show_hi_res(self, img_filename):
-        estr = re.findall('e\d*',img_filename)[0]
-        img_array = cppn.upscale_saved(estr, save=False)
-        img = ImageTk.PhotoImage(image=Image.fromarray(np.uint8(img_array*255),mode='RGB'))
+
+    def show_hi_res(self, img: MyImage):
+        """
+        Opens a new window showing an image in high resolution.
+        """
+        img_large = img.change_resolution(512)  # TODO: Get high res size from config file
+        imgtk = self.to_image_tk(img_large)
         window = tk.Toplevel(self.root)
-        window.title(estr)
-        lab = tk.Label(window, image=img)
-        lab.image = img # Annoying tkinter thing. See here: http://effbot.org/pyfaq/why-do-my-tkinter-images-not-appear.htm
+        window.title('High Resolution')
+        lab = tk.Label(window, image=imgtk)
+        lab.image = imgtk # Annoying tkinter thing. See here: http://effbot.org/pyfaq/why-do-my-tkinter-images-not-appear.htm
+        save_button = tk.Button(window, text="Save", command=lambda: save_cmd())
         lab.pack()
+        save_button.pack()
+
+        def save_cmd():
+            saved_path = img_large.save()
+            save_button['state'] = tk.DISABLED
+            lab['text'] = 'Saved here:\n{}'.format(saved_path)
+            lab['compound'] = 'top'
 
     def on_closing(self):
         """
@@ -197,6 +201,3 @@ class ImgGrid(object):
         global aborted
         aborted = True
         self.root.destroy()
-
-
-        

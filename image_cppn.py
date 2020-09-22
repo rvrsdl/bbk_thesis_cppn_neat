@@ -7,6 +7,8 @@ Has stuff to do with processing i
 """
 from __future__ import annotations
 from typing import Tuple
+import os
+from datetime import datetime
 
 import numpy as np
 from matplotlib.image import imsave, imread
@@ -21,7 +23,7 @@ Dims = Tuple[int, int]
 
 class ImageCreator(object):
     
-    def __init__(self, colour_channels: int = 3, bias_length: int = 1, fourier_features: int = 0):
+    def __init__(self, save_loc: str = os.getcwd(), colour_channels: int = 3, bias_length: int = 1, fourier_features: int = 0):
         self.channels = colour_channels
         self.bias_length = bias_length
         self.fourier_features = fourier_features
@@ -30,12 +32,14 @@ class ImageCreator(object):
             self.fourier_map_vector = fourier.initialize_fourier_mapping_vector(n_features=fourier_features)
         else:
             self.fourier_map_vector = None
+        self.save_loc = save_loc
+        self.base_name = datetime.now().strftime("%d%b%Y_%I%p%M")
         
     def create_image(self, genome: Genome, size=128) -> Image:
-        cppn = CPPN(NNFF(genome), self.fourier_map_vec)
-        img = cppn.create_image( (size,size), bias=self.bias_vec)
-        img.genome = genome # The image has a reference to its own genome
-        img.creator = self # give it a ref to the creator in case we need to upscale it.
+        cppn = CPPN(NNFF(genome), self.fourier_map_vector)
+        img = cppn.create_image( (size, size), bias=self.bias_vec)
+        img.genome = genome  # The image has a reference to its own genome
+        img.creator = self  # give it a ref to the creator in case we need to upscale it.
         return img
 
     @property
@@ -49,13 +53,15 @@ class ImageCreator(object):
     def n_out(self):
         return self.channels
 
+
 class Image:
     """
     Simple class to hold image data and some metadata
     like size and number of channels.
     Might also have save and show methods etc.
     """
-    
+    _image_num = 0
+
     def __init__(self, data : np.ndarray, genome: Genome = None, creator: ImageCreator = None):
         shape = data.shape
         if len(shape) == 2:
@@ -68,22 +74,54 @@ class Image:
             raise Exception("Invalid array shape")
         assert np.max(data) <= 1 and np.min(data) >=0, "Image data must be in range 0-1"
         self.data = data
-        self._genome = genome
-        self._creator = creator
-            
-    def save(self, filename: str, resolution: tuple = None) -> None:
+        self.genome = genome
+        self.creator = creator
+        self._image_num += 1
+
+    @property
+    def name(self) -> str:
+        n = 'img_{}'.format(self.genome.metadata.get('name', str(self._image_num)))
+        if 'species' in self.genome.metadata:
+            n = n + '_' + self.genome.metadata.get('species')
+        return n
+
+    def change_resolution(self, resolution: int) -> Image:
+        """
+        Returns the image at the requested resolution
+        """
+        if (resolution, resolution) == self.size:
+            # We already have the correct resolution
+            # We can just return the image we already have
+            return self
+        else:
+            # Create a copy at the requested resolution
+            new_img = self.creator.create_image(self.genome, resolution)
+            return new_img
+
+    def save(self, filename: str = None, resolution: int = None) -> str:
         """
         Saves the image.
         """
-        if resolution == self.size:
-            # We can just save the image we already have
-            save_data = self.data
+        if resolution:
+            save_data = self.change_resolution(resolution).data
         else:
-            new_img = self._creator.create_image(self._genome, resolution)
-            save_data = new_img.data
-        # Note the cmap param is ignored if we have RGB data.
-        imsave(filename, save_data, vmin=0, vmax=1, cmap='gray')
-            
+            save_data = self.data
+
+        if filename:
+            filename, suffix = os.path.splitext(filename)
+            if not suffix:
+                suffix = '.png'
+            savedir = self.creator.save_loc
+        else:
+            filename, suffix = self.name, '.png'
+            savedir = os.path.join(self.creator.save_loc, self.creator.base_name)
+        if not os.path.exists(savedir):
+            os.mkdir(savedir)
+        savepath = os.path.join(savedir, filename + suffix)
+        imsave(savepath, save_data, vmin=0, vmax=1, cmap='gray') # Note the cmap param is ignored if we have RGB data.
+        print('Image saved here: {}'.format(savepath))
+        return savepath
+
     @staticmethod
     def load(filename: str, channels=3) -> Image:
         """

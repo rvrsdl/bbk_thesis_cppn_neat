@@ -140,6 +140,12 @@ class Genome(object):
         else:
             return {(g['from'], g['to']) for g in self._conn_genes}
 
+    def get_wgts_dict(self) -> dict:
+        """
+        Returns a dict of weights with keys as tuples of the (from, to) nodes.
+        """
+        return {(gene['from'], gene['to']): gene['wgt'] for gene in self._conn_genes if gene['enabled']}
+
     def add_node(self) -> None:
         """
         Adds a new node by breaking an existing connection in two.
@@ -428,6 +434,7 @@ class Genome(object):
                       disable_prob=self._disable_prob)
 
     def save(self, filename: str = None) -> None:
+        # TODO: use save loc from config and match image saving protocol.
         if not filename:
             filename = "./output/genome_" + datetime.datetime.now().strftime("%d%b%Y_%I%p%M") + '.json'
         with open(filename, 'w') as savefile:

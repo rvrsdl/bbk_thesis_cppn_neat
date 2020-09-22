@@ -10,7 +10,7 @@ max_generations: 50
 population_settings:
     size: 28
     mutation_rate: 0.5
-    brred_method: selected # / total / species
+    breed_method: selected # / total / species
 
 image_settings:
     colour_channels: 3
