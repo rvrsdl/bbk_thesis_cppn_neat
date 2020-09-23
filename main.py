@@ -16,7 +16,7 @@ from population import Population
 
 
 def main():
-    with open('config2.yaml', 'r') as f:  # TODO: allow any config file to be passed in
+    with open('config2.yml', 'r') as f:  # TODO: allow any config file to be passed in
         CFG = yaml.safe_load(f)
 
     # set up components

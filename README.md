@@ -1,5 +1,27 @@
-# neat
+# RW NEAT
 
+## Install Dependencies
+Set up a virtual environment and install dependencies.
+(<env_name> below should be replaced with your chosen environment name).
+
+Using conda:
+```
+$ conda env create -f environment.yml
+```
+Using virtualenv and pip:
+
+```
+$ virtualenv -p python3.8 venv
+$ source venv/bin/activate
+$ pip install -r requirements.txt
+```
+
+## Run
+```
+$ python main.py
+```
+
+# Description
 Contents:
 - genome.py: contains the Genome class which handles mutation etc.
 - nnet.py: Contains the FeedForwardNet class which takes a Genome as input.
