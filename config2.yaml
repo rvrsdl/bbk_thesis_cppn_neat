@@ -30,13 +30,13 @@ genome_settings:
         - {func: mod, prob: 1}
         - {func: round, prob: 1}
         - {func: point, prob: 1}
-        - {func: nofunc, prob: 1}
+        - {func: nofunc, prob: 0}
     aggregation_funcs:
         - {func: sum, prob: 0.8}
         - {func: max, prob: 0.2} # seems to have a problem with upscaling
     output_funcs:
-        - {func: sigmoid, prob: 1}
-        - {func: gaussian, prob: 1}
+        - {func: sigmoid, prob: 0.7} # more pastel
+        - {func: gaussian, prob: 0.3} # more neon
     mutation_funcs:
         - {func: alter_wgt, prob: 0.4}
         - {func: flip_wgt, prob: 0.1}

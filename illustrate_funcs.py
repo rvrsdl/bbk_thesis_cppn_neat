@@ -18,7 +18,7 @@ import funcs
 
 
 settings = {'output_funcs': [{'func': 'sigmoid', 'prob': 1}]}
-fig, axs = plt.subplots(6, 2,  figsize=[5, 8])
+fig, axs = plt.subplots(7, 2,  figsize=[5, 9.3])
 
 # sigmoid xcoords
 x = np.linspace(-1, 1, 128)
@@ -27,6 +27,7 @@ axs[0,0].plot(x,y)
 axs[0,0].set_xlim([-1,1])
 axs[0,0].set_ylim([0,1])
 axs[0,0].set_title('y = sigmoid(5x)')
+axs[0,0].set_ylabel('(a)', y=1, fontweight='bold', labelpad=10, rotation=0)
 
 G = Genome(4, 1, init_conns=False, settings=settings)
 G._create_conn_gene(path=(0,4), wgt=5)
@@ -44,6 +45,8 @@ axs[1,0].plot(x,y)
 axs[1,0].set_xlim([-1,1])
 axs[1,0].set_ylim([0,1])
 axs[1,0].set_title('y = abs(x)')
+axs[1,0].set_ylabel('(b)', y=1, fontweight='bold', labelpad=10, rotation=0)
+
 
 G = Genome(4, 1, init_conns=False, settings=settings)
 G._node_genes.append({
@@ -65,11 +68,13 @@ axs[1,1].set_title('x_coords -> Abs')
 
 # round, dcoords
 x = np.linspace(-1, 1, 128)
-y = funcs.round1dp(x)
+y = funcs.round1dp(x/2)*2
 axs[2,0].plot(x,y)
 axs[2,0].set_xlim([-1,1])
 axs[2,0].set_ylim([-1,1])
 axs[2,0].set_title('y = round(x)')
+axs[2,0].set_ylabel('(c)', y=1, fontweight='bold', labelpad=10, rotation=0)
+
 
 G = Genome(4, 1, init_conns=False, settings=settings)
 G._node_genes.append({
@@ -96,6 +101,7 @@ axs[3,0].plot(x,y)
 axs[3,0].set_xlim([-1,1])
 axs[3,0].set_ylim([-1,1])
 axs[3,0].set_title('y = sin(10x)')
+axs[3,0].set_ylabel('(d)', y=1, fontweight='bold', labelpad=10, rotation=0)
 
 G = Genome(4, 1, init_conns=False, settings=settings)
 G._node_genes.append({
@@ -121,6 +127,7 @@ axs[4,0].plot(x,y)
 axs[4,0].set_xlim([-1,1])
 axs[4,0].set_ylim([0,1])
 axs[4,0].set_title('y = relu(x)')
+axs[4,0].set_ylabel('(e)', y=1, fontweight='bold', labelpad=10, rotation=0)
 
 G = Genome(4, 1, init_conns=False, settings=settings)
 G._node_genes.append({
@@ -147,6 +154,8 @@ axs[5,0].plot(x,y)
 axs[5,0].set_xlim([-1,1])
 axs[5,0].set_ylim([0,1])
 axs[5,0].set_title('y = mod(2x)<0.1')
+axs[5,0].set_ylabel('(f)', y=1, fontweight='bold', labelpad=10, rotation=0)
+
 
 G = Genome(4, 1, init_conns=False, settings=settings)
 G._node_genes.append({
@@ -166,26 +175,36 @@ img = C.create_image(G)
 img.show(axs[5,1])
 axs[5,1].set_title('x_coords, y_coords -> Mod')
 
+
+# point, xcoords
+x = np.linspace(-1, 1, 128)
+y = funcs.point(x, p=-0.5)
+axs[6,0].plot(x,y)
+axs[6,0].set_xlim([-1,1])
+axs[6,0].set_ylim([0,1])
+axs[6,0].set_title('y = abs(x-0.5)<0.05')
+axs[6,0].set_ylabel('(g)', y=1, fontweight='bold', labelpad=10, rotation=0)
+
+G = Genome(4, 1, init_conns=False, settings=settings)
+G._node_genes.append({
+    'id': 5,
+    'layer': 'hidden',
+    'agg_func': 'sum',
+    'act_func': 'point',
+    'act_args': {'p': -0.5}
+})
+#G._create_conn_gene(path=(2,5), wgt=1)
+G._create_conn_gene(path=(0,5), wgt=1)
+G._create_conn_gene(path=(3,4), wgt=-1) #bias
+G._create_conn_gene(path=(5,4), wgt=7)
+C = ImageCreator(colour_channels=1)
+C.bias_vec = [1]
+img = C.create_image(G)
+img.show(axs[6,1])
+axs[6,1].set_title('x_coords -> Point')
+
 fig.tight_layout()
 plt.show()
-
-# # point, xcoords
-# G = Genome(4, 1, init_conns=False, settings=settings)
-# G._node_genes.append({
-#     'id': 5,
-#     'layer': 'hidden',
-#     'agg_func': 'max',
-#     'act_func': 'point',
-#     'act_args': {'p':0.5}
-# })
-# G._create_conn_gene(path=(2,5), wgt=1)
-# G._create_conn_gene(path=(0,5), wgt=1.5)
-# #G._create_conn_gene(path=(3,4), wgt=0) #bias
-# G._create_conn_gene(path=(5,4), wgt=1)
-# C = ImageCreator(colour_channels=1)
-# C.bias_vec = [1]
-# img = C.create_image(G)
-# img.show()
 
 # # trying to get floating square off centre!!
 # G = Genome(4, 1, init_conns=False, settings=settings)
