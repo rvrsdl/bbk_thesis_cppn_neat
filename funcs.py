@@ -47,8 +47,12 @@ def sinz(z):
 def absz(z):
     return np.abs(z)
 
+def nofunc(z):
+    return z
+
 def get_funcs(func_name):
     func_dict = {
+        'nofunc': nofunc,
         'sigmoid': sigmoid,
         'relu': relu,
         'tanh': tanhz,

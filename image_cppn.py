@@ -140,15 +140,18 @@ class Image:
         return Image(img)
         # Do we need to rescale values to be 0-1 ??
     
-    def show(self) -> None:
+    def show(self, ax: plt.Axes = None) -> None:
         """
         Shows the image in the plots window.
+        Optionally pass in an Axes to plot on
+        (useful if arranging subplots etc.)
         """
-        if self.channels==1:
-            plt.imshow(self.data, cmap='gray', vmin=0, vmax=1)
+        cmap = 'gray' if self.channels==1 else None
+        if ax:
+            ax.imshow(self.data, cmap=cmap, vmin=0, vmax=1, extent=[-1,1,1,-1])
         else:
-            plt.imshow(self.data, vmin=0, vmax=1)
-        plt.show()
+            plt.imshow(self.data, cmap=cmap, vmin=0, vmax=1, extent=[-1,1,1,-1])
+            plt.show()
         
     def diff(self, shift=1) -> Image:
         """
@@ -177,7 +180,8 @@ class CPPN:
         else:
             self.bias_vec_len = net.n_in - len(fourier_vec)*2           
     
-    def get_coords(self, imsize: Dims) -> np.ndarray: 
+    @staticmethod
+    def get_coords(imsize: Dims) -> np.ndarray: 
         x = np.linspace(-1, 1, imsize[0])
         y = np.linspace(-1, 1, imsize[1])
         xx, yy = np.meshgrid(x, y)
@@ -192,7 +196,7 @@ class CPPN:
         if bias is None:
             bias = np.tile(1, self.bias_vec_len)
         assert len(bias)==self.bias_vec_len, "Bias vector was an unexpected size."
-        coords = self.get_coords(imsize)
+        coords = CPPN.get_coords(imsize)
         pixels = imsize[0]*imsize[1]
         bias_tile = np.tile(bias, (pixels,1)) # The bias (scalar or vector must go in for every pixel)
         if self.fourier_vec is None:

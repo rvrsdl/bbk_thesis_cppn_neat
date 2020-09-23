@@ -27,7 +27,7 @@ class NNFF(object):
         for lr in range(self.n_layers-1):
             from_nodes.extend(self.layers[lr])  # this accumulates (because a connection can be from ANY previous layer)
             to_nodes = self.layers[lr+1]  # this does not accumulate
-            wgts_mat = np.array([[wgts_dict.get((u, v), 0) for u in from_nodes] for v in to_nodes])
+            wgts_mat = np.array([[wgts_dict.get((u, v), np.nan) for u in from_nodes] for v in to_nodes])
             act_func_strs = [self.genome.get_node_gene(i).get('act_func') for i in to_nodes]
             act_funcs = list(map(funcs.get_funcs, act_func_strs))
             act_args = [self.genome.get_node_gene(i).get('act_args', dict()) for i in to_nodes]
@@ -78,7 +78,7 @@ class NNFF(object):
         """
         assert len(a) == len(self.layers[0]), "Input vector must be same size as input layer."
         node_vals = {node: val for (node, val) in zip(self.layers[0], a)}   # Initialise the dict with inputs
-        agg_func_dict = {'sum': np.sum, 'max': np.max}
+        agg_func_dict = {'sum': np.nansum, 'max': np.nanmax, 'min': np.nanmin}
         for linfo in self.layer_info:
             inp_vec = np.array([node_vals[n] for n in linfo['from_nodes']])
             weights = linfo['wgts_mat']
@@ -88,6 +88,7 @@ class NNFF(object):
             all_sum = np.all(np.array(agg_func_strs) == 'sum')
             if all_sum:
                 # If they are all sum aggregations, it is much more efficient to use np.dot
+                weights = np.nan_to_num(weights) # replace NaN with zero
                 zs = np.dot(weights, inp_vec)
                 # zs = np.max(weights[:, :, None] * inp_vec[None, :, :], axis = 1) # all max
             else:
