@@ -4,6 +4,7 @@
 Contains various fitness evaluators that can be passed to
 a Population object.
 """
+import os
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -13,7 +14,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from src.genome import Genome
-from src.image_cppn import ImageCreator, Image
+from src.imaging import ImageCreator, Image
 from src import tk_display as td
 
 # typing definitions
@@ -96,7 +97,6 @@ class PixelDiffEvaluator(AbstractEvaluator):
         """
         L2 Pixel distance
         """
-        # TODO: could average pixel values in larger
         # squares for each image first. ie. effectively
         # lower the resolution.
         if self.channels == 1:
@@ -177,10 +177,7 @@ class ImageNetEvaluator(AbstractEvaluator):
     down a jellyfish rabbithole early on. (NB fade factors compound
     so if we have seen 10 jellyfish we will be multiplying by 0.98^10)
     """
-    # TODO: could use HHI to select most concentrated probabilites.
-    # This would mean we wouldn't discard the info of 2nd/3rd etc. most likely.
-    # Aaand we could try selecting for LOW HHI, ie. most uncertainty about category.
-    # Would probably select for blobs, but might be interesting (like CAN networks selecting for uncertain style.)
+
     def __init__(self, image_creator: ImageCreator, fade_factor: float = 1, **kwargs) -> None:
         super().__init__(image_creator, **kwargs)
         self._fade_factor = fade_factor
@@ -190,7 +187,8 @@ class ImageNetEvaluator(AbstractEvaluator):
             ])
         self._model.build([None, 128, 128, self._image_creator.channels])  # Batch input shape.
         # load class labels
-        with open("ImageNetLabels.txt", "r") as f:
+        labels_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ImageNetLabels.txt'))
+        with open(labels_file, "r") as f:
             self._class_labels = np.array([line.strip() for line in f.readlines()])
         
     def run(self, genomes: Genomes, gen_num: int) -> None:
@@ -198,7 +196,7 @@ class ImageNetEvaluator(AbstractEvaluator):
         model_input = self.imgs2tensor(imgs)  # turn it into a tensor
         logits = self._model(model_input) # use the model
         probs = np.array(tf.nn.softmax(logits))
-        max_idx = np.argmax(probs, axis=1)  # TODO: or arg_hhi
+        max_idx = np.argmax(probs, axis=1)
         best_probs = probs[np.arange(len(probs)), max_idx]
         best_labels = self._class_labels[max_idx]
         for lab in best_labels:

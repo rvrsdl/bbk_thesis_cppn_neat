@@ -7,16 +7,31 @@ Created on Tue Sep 15 19:43:24 2020
 
 @author: riversdale
 """
+import os
+import argparse
 import yaml
 
 from src.evaluators import InteractiveEvaluator, PixelPctEvaluator, ImageNetEvaluator
-from src.image_cppn import ImageCreator
+from src.imaging import ImageCreator
 from src.genome import Genome
 from src.population import Population
 
 
 def main():
-    with open('../configurations/config_manual.yml', 'r') as f:  # TODO: allow any config file to be passed in
+    # Parse command line args
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config")
+    args = parser.parse_args()
+    config = args.config
+    head, tail = os.path.split(config)
+    if not head:
+        # If directory was not specified assume the file is in the configurations folder
+        # (one above where we are now).
+        head = os.path.abspath(os.path.join(os.path.dirname(__file__), 'configurations')) # put '..', before configrations to go up one
+        config = os.path.join(head, tail)
+
+    # Load the config file
+    with open(config, 'r') as f:
         CFG = yaml.safe_load(f)
 
     # set up components
@@ -29,7 +44,7 @@ def main():
     if evaluation == 'interactive':
         evaluator = InteractiveEvaluator(image_creator, breed_method=population.breed_method, thresh=population._thresh)
     elif evaluation == 'target':
-        from src.image_cppn import Image  # TODO: is it bad to have import here?
+        from src.imaging import Image  # TODO: is it bad to have import here?
         target = Image.load(CFG['target_img'], CFG['image_settings']['colour_channels'])
         evaluator = PixelPctEvaluator(image_creator, target_img=target, visible=CFG['visible'], breed_method=population.breed_method, thresh=population._thresh)
     elif evaluation == 'imagenet':

@@ -10,7 +10,7 @@ import copy
 import numpy as np
 
 from src.nnet import NNFF
-from src.image_cppn import CPPN
+from src.imaging import CPPN
 
 class HallOfFame(object):
     """

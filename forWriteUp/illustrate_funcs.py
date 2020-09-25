@@ -12,7 +12,7 @@ Created on Tue Sep 22 20:58:33 2020
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.image_cppn import ImageCreator
+from src.imaging import ImageCreator
 from src.genome import Genome
 from src import funcs
 

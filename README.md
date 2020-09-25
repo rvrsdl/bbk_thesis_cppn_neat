@@ -6,6 +6,8 @@ This system uses K. Stanley's CPPN-NEAT algorithm to allow the user to evolve im
 A simple user interface is provided, allowing selection and saving of the images.
 The system can also be run in "automatic" mode where a pretrained ImageNet ANN selects the images to be evolved.
 
+Example results can be viewed at: https://www.instagram.com/evolved_art_neat/
+
 ## Setup Instructions
 * Clone Repo
 ```
@@ -22,9 +24,10 @@ $ virtualenv -p python3.8 venv
 $ source venv/bin/activate
 $ pip install -r requirements.txt
 ```
--  Run
+-  Run, supplying a config file as an argument
+(it will expect this to be in the `configurations/` folder)
 ```
-$ python main.py
+$ python main.py config_manual.yml
 ```
 
 # Contents

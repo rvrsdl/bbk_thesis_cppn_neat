@@ -7,7 +7,7 @@ from typing import List, Union
 
 import tkinter as tk
 from PIL import ImageTk, Image
-from src.image_cppn import Image as MyImage
+from src.imaging import Image as MyImage
 import numpy as np
 
 from src.visualise import render_saved_genome
