@@ -1,0 +1,53 @@
+
+
+# Config file for NEAT-CPPN system.
+
+# Could do some of this as command_line options.
+visible: True
+evaluation: interactive # / target / imagenet
+max_generations: 50
+
+population_settings:
+    size: 28
+    mutation_rate: 0.5
+    breed_method:  selected # / total / species
+
+image_settings:
+    colour_channels: 3
+    coord_types: [x, y, r] # x & y for Cartesian, r and phi for Polar, perlin for noise
+    bias_length: 1
+    fourier_features: 0
+
+target_image: 'duck_bw_128.png'
+
+genome_settings:
+    activation_funcs:
+        - {func: sigmoid, prob: 1}
+        - {func: relu, prob: 1}
+        - {func: tanh, prob: 1}
+        - {func: sin, prob: 1}
+        - {func: abs, prob: 1}
+        - {func: mod, prob: 1}
+        - {func: round, prob: 1}
+        - {func: point, prob: 1}
+        - {func: nofunc, prob: 0.5}
+        - {func: gaussian_white, prob: 0}
+        - {func: gaussian_black, prob: 0}
+    aggregation_funcs:
+        - {func: sum, prob: 0.8}
+        - {func: max, prob: 0.2} # gives sharp angles
+    output_funcs:
+        - {func: sigmoid, prob: 0.8} # more pastel
+        - {func: gaussian_black, prob: 0.1} # neon with black background
+        - {func: gaussian_white, prob: 0.1} # neon with white background
+    mutation_funcs:
+        - {func: alter_wgt, prob: 0.4}
+        - {func: flip_wgt, prob: 0.1}
+        - {func: add_connection, prob: 0.3}
+        - {func: add_node, prob: 0.1}
+        - {func: disable_connection, prob: 0.1}
+    disable_prob: 0.6
+
+save_location: '/home/riversdale/Documents/MSc/thesis/rw_neat/output/'
+save_size: 512
+
