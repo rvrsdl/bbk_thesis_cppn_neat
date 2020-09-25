@@ -13,8 +13,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from genome import Genome
-from nnet import NNFF
-from image_cppn import ImageCreator, Image, CPPN
+from image_cppn import ImageCreator, Image
 import tk_display as td
 
 # typing definitions
@@ -24,17 +23,24 @@ Images = List[Image]
 
 class AbstractEvaluator(ABC):
 
-    def __init__(self, image_creator: ImageCreator, visible: bool = False) -> None:
+    def __init__(self, image_creator: ImageCreator, visible: bool = False,
+                 breed_method: str = None, thresh: int = None) -> None:
         self._image_creator = image_creator
         self._visible = visible
+        self._breed_method = breed_method
+        self._thresh = thresh
         self.gameover = False  # We can set this to true to break out of caller loop
 
     @abstractmethod
     def run(self, genomes: Genomes, gen_num: int) -> None:
         pass
     
-    def show_grid(self, imgs: Images, text: np.array = None, default_scores: np.array = None, gen_num: int = 0) -> np.array:
-        grd = td.ImgGrid(imgs, text=text, n_imgs=28, nrows=4, title="Generation {}".format(gen_num), default_scores=default_scores)
+    def show_grid(self, imgs: Images, text: np.array = None,
+                  default_scores: np.array = None, gen_num: int = 0) -> np.array:
+        grd = td.ImgGrid(imgs, text=text, n_imgs=28, nrows=4,
+                         title="Generation {}".format(gen_num),
+                         default_scores=default_scores,
+                         select_method=self._breed_method, thresh=self._thresh)
         ratings = grd.run()
         if td.aborted:
             self.gameover = True
@@ -50,9 +56,9 @@ class AbstractEvaluator(ABC):
 
 class InteractiveEvaluator(AbstractEvaluator):
     
-    def __init__(self, image_creator: ImageCreator) -> None:
+    def __init__(self, image_creator: ImageCreator, **kwargs) -> None:
         # Pass through args to the base class constructor but with show_grid=True
-        super().__init__(image_creator, visible=True)
+        super().__init__(image_creator, visible=True, **kwargs)
     
     def run(self, genomes: Genomes, gen_num: int) -> None:
         imgs = self._create_images(genomes)
@@ -65,8 +71,8 @@ class InteractiveEvaluator(AbstractEvaluator):
 
 class PixelDiffEvaluator(AbstractEvaluator):
     
-    def __init__(self, image_creator: ImageCreator, target_img: Image = None, visible=False) -> None:
-        super().__init__(image_creator, visible=visible)
+    def __init__(self, image_creator: ImageCreator, target_img: Image = None, **kwargs) -> None:
+        super().__init__(image_creator, **kwargs)
         if target_img is None:
             self.target_img = self.get_default_target()
         else:
@@ -83,7 +89,7 @@ class PixelDiffEvaluator(AbstractEvaluator):
             if user_ratings:
                 ratings = user_ratings  # WARNING: this allows user to modify default ratings
         # Now set the genome fitnesses according to the ratings
-        for g,r in zip(genomes, ratings):
+        for g, r in zip(genomes, ratings):
             g.metadata['fitness'] = r
             
     def dist_rating(self, img: Image) -> float:
@@ -107,11 +113,11 @@ class PixelDiffEvaluator(AbstractEvaluator):
         """ 
         Returns a quartered checkerboard image.
         """
-        ones = np.tile(1,(64,64))
-        zeros = np.tile(0,(64,64))
-        left = np.concatenate((ones,zeros), axis=0)
-        right = np.concatenate((zeros,ones), axis=0)
-        out = np.concatenate((left,right), axis=1)
+        ones = np.tile(1, (64, 64))
+        zeros = np.tile(0, (64, 64))
+        left = np.concatenate((ones, zeros), axis=0)
+        right = np.concatenate((zeros, ones), axis=0)
+        out = np.concatenate((left, right), axis=1)
         return Image(out)
 
 
@@ -141,12 +147,12 @@ class PixelPctEvaluator(PixelDiffEvaluator):
         """
         #thresh = 0.95 # Now thresh is the majorness of the tone changes we care about
         # ie. 1 is complete black to white or vice versa.
-        thresh = np.percentile( self.target_img.diff().data, 99 ) # threshold at 95th percentile. TODO: needs more thought!
+        thresh = np.percentile(self.target_img.diff().data, 99) # threshold at 95th percentile. TODO: needs more thought!
         if self.channels == 1:
             # How many of the major changes in the target pic are also major changes in the candidate
             tgt_major_diff_loc = self.target_img.diff().data >= thresh
             img_major_diff_loc = img.diff().data >= thresh
-            # Jaccard coeff ie. intersection over union??
+            # Jaccard coeff ie. intersection over union
             rating = jaccard(tgt_major_diff_loc, img_major_diff_loc)
         elif self.channels == 3:
             # TODO
@@ -175,14 +181,14 @@ class ImageNetEvaluator(AbstractEvaluator):
     # This would mean we wouldn't discard the info of 2nd/3rd etc. most likely.
     # Aaand we could try selecting for LOW HHI, ie. most uncertainty about category.
     # Would probably select for blobs, but might be interesting (like CAN networks selecting for uncertain style.)
-    def __init__(self, image_creator: ImageCreator, fade_factor: float = 1, visible: bool = False) -> None:
-        super().__init__(image_creator, visible=visible)
+    def __init__(self, image_creator: ImageCreator, fade_factor: float = 1, **kwargs) -> None:
+        super().__init__(image_creator, **kwargs)
         self._fade_factor = fade_factor
         self._class_seen = dict()  # To keep track of how many times we have seen each class
         self._model = tf.keras.Sequential([
             hub.KerasLayer("https://tfhub.dev/google/imagenet/mobilenet_v1_100_128/classification/4")
             ])
-        self.model.build([None, 128, 128, self._image_creator.channels])  # Batch input shape.
+        self._model.build([None, 128, 128, self._image_creator.channels])  # Batch input shape.
         # load class labels
         with open("ImageNetLabels.txt", "r") as f:
             self._class_labels = np.array([line.strip() for line in f.readlines()])
@@ -192,7 +198,7 @@ class ImageNetEvaluator(AbstractEvaluator):
         model_input = self.imgs2tensor(imgs)  # turn it into a tensor
         logits = self._model(model_input) # use the model
         probs = np.array(tf.nn.softmax(logits))
-        max_idx = np.argmax(probs, axis=1) # TODO: or arghhi
+        max_idx = np.argmax(probs, axis=1)  # TODO: or arg_hhi
         best_probs = probs[np.arange(len(probs)), max_idx]
         best_labels = self._class_labels[max_idx]
         for lab in best_labels:
@@ -200,10 +206,11 @@ class ImageNetEvaluator(AbstractEvaluator):
             # (class fades are initialised to 1 if not already in dictionary)
             self._class_seen[lab] = self._class_seen.setdefault(lab, 0) + 1
         multiplier = np.array([self._fade_factor ** self._class_seen[l] for l in best_labels])
-        ratings = best_probs * multiplier * 100 # *100 because ratings need to be in range 0-100
+        ratings = best_probs * multiplier * 100  # *100 because ratings need to be in range 0-100
         if self._visible:
-            text = ['{:.12}: {:.0f}%'.format(l,p*100) for (l,p) in zip(best_labels, best_probs)]
+            text = ['{:.12}: {:.0f}%'.format(l, p*100) for (l, p) in zip(best_labels, best_probs)]
             user_ratings = self.show_grid(imgs, text=text, default_scores=ratings, gen_num=gen_num)
+            #user_ratings = self.show_grid(imgs, text=text, default_scores=ratings, gen_num=gen_num)
             if user_ratings:
                 ratings = user_ratings # WARNING: this allows user to modify default ratings
         # Now set the genome fitnesses according to the ratings

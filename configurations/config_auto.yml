@@ -9,12 +9,12 @@ max_generations: 50
 
 population_settings:
     size: 28
-    mutation_rate: 0.75
+    mutation_rate: 0.7
     breed_method:  total #selected # / total / species
 
 image_settings:
     colour_channels: 3
-    coord_types: [x, y] # x & y for Cartesian, r and phi for Polar, perlin for noise
+    coord_types: [x, y, perlin] # x & y for Cartesian, r and phi for Polar, perlin for noise
     bias_length: 1
     fourier_features: 0
 
@@ -27,15 +27,15 @@ genome_settings:
         - {func: tanh, prob: 1}
         - {func: sin, prob: 1}
         - {func: abs, prob: 1}
-        #- {func: mod, prob: 1}
-        #- {func: round, prob: 1}
-        #- {func: point, prob: 1}
+        - {func: mod, prob: 0}
+        - {func: round, prob: 0}
+        - {func: point, prob: 0}
         - {func: nofunc, prob: 0}
         - {func: gaussian_white, prob: 0}
         - {func: gaussian_black, prob: 0}
     aggregation_funcs:
-        - {func: sum, prob: 0.8}
-        #- {func: max, prob: 0.2} # gives sharp angles
+        - {func: sum, prob: 01}
+        - {func: max, prob: 0} # gives sharp angles
     output_funcs:
         - {func: sigmoid, prob: 0.8} # more pastel
         - {func: gaussian_black, prob: 0.1} # neon with black background

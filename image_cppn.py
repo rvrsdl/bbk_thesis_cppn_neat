@@ -6,7 +6,7 @@ Created on Wed Jul 29 22:33:02 2020
 Has stuff to do with processing i
 """
 from __future__ import annotations
-from typing import Tuple
+from typing import Tuple, List, Dict
 import os
 from datetime import datetime
 
@@ -17,41 +17,102 @@ import matplotlib.pyplot as plt
 from nnet import NNFF
 import fourier
 from genome import Genome
+from perlin import get_perlin_noise
 
 # typing definitions
 Dims = Tuple[int, int]
 
 class ImageCreator(object):
     
-    def __init__(self, save_loc: str = os.getcwd(), colour_channels: int = 3, bias_length: int = 1, fourier_features: int = 0):
+    def __init__(self, save_loc: str = os.getcwd(), colour_channels: int = 3,
+                 coord_types: List[str] = ['x', 'y', 'r'], bias_length: int = 1,
+                 fourier_features: int = 0, default_imsize: Tuple[int, int] = (128,128)) -> None:
         self.channels = colour_channels
+        self.coord_types = coord_types
         self.bias_length = bias_length
         self.fourier_features = fourier_features
-        self.bias_vec = np.random.normal(size=bias_length)
+        self.bias_vec = np.tile(1, bias_length) #np.random.normal(size=bias_length)
         if fourier_features:
             self.fourier_map_vector = fourier.initialize_fourier_mapping_vector(n_features=fourier_features)
         else:
             self.fourier_map_vector = None
+        self.perlin_seed = np.random.randint(0, 100)
+        # To save recalculating coords each time, keep the coords for the default image size.
+        self.default_imsize = default_imsize
+        self.default_coords = ImageCreator.get_coords(imsize=self.default_imsize, types=self.coord_types, perlin_seed=self.perlin_seed)  
         self.save_loc = save_loc
         self.base_name = datetime.now().strftime("%d%b%Y_%I%p%M")
-        
-    def create_image(self, genome: Genome, size=128) -> Image:
-        cppn = CPPN(NNFF(genome), self.fourier_map_vector)
-        img = cppn.create_image( (size, size), bias=self.bias_vec)
-        img.genome = genome  # The image has a reference to its own genome
-        img.creator = self  # give it a ref to the creator in case we need to upscale it.
-        return img
 
     @property
     def n_in(self):
          if self.fourier_features:
             return (self.fourier_features*2) + self.bias_length
          else:
-            return 3 + self.bias_length
+            return len(self.coord_types) + self.bias_length
     
     @property
     def n_out(self):
-        return self.channels
+        return self.channels        
+    
+    def create_image(self, genome: Genome, imsize: Tuple[int, int] = (128,128)) -> Image:
+        if imsize == self.default_imsize:
+            coord_dict = self.default_coords
+        else:
+            coord_dict = ImageCreator.get_coords(imsize=imsize, types=self.coord_types, perlin_seed=self.perlin_seed)
+        cppn = NNFF(genome)
+        pixels = imsize[0]*imsize[1]
+        bias_tile = np.tile(self.bias_vec, (pixels, 1))  # The bias (scalar or vector must go in for every pixel)
+        if self.fourier_features:
+            # Use fourier features rather than coordinates as inputs to the neural net.
+            use_coords = np.stack([coord_dict['x'], coord_dict['y']], axis=-1)
+            feats = fourier.fourier_mapping(use_coords, self.fourier_map_vector)
+            n_ffeats = self.fourier_map_vector.shape[0]
+            feats = feats.reshape(pixels, n_ffeats*2) # times two because we have sin and cos features
+            img_raw = np.array(cppn.feedforward((*feats.T, *bias_tile.T)))
+        else:
+             # Vanilla CPPN with coordinate inutes to neural network
+            use_coords = [coord_dict.get(a).ravel() for a in self.coord_types]
+            img_raw = np.array(cppn.feedforward((*use_coords, *bias_tile.T)))
+        if self.channels == 1:
+            img_square = img_raw.T.reshape(imsize[0], imsize[1])
+        else:
+            img_square = img_raw.T.reshape(imsize[0], imsize[1], self.channels)
+        image_out = Image(img_square)
+        image_out.genome = genome  # The image has a reference to its own genome
+        image_out.creator = self # give it a ref to the creator in case we need to upscale it.
+        return image_out
+        
+        
+        # cppn = CPPN(NNFF(genome), self.coord_types, self.bias_vec, self.fourier_map_vector)
+        # img = cppn.create_image( (size, size))
+        # img.genome = genome  # The image has a reference to its own genome
+        # img.creator = self  # give it a ref to the creator in case we need to upscale it.
+        # return img
+    
+    @staticmethod
+    def get_coords(imsize: Tuple[int, int] = (128,128), types: List[str] = ['x','y','r','phi','perlin'], perlin_seed=None) -> Dict[str, np.ndarray]:
+        all_coords = dict()
+        
+        # Cartesian coordinates
+        x_axis = np.linspace(-1, 1, imsize[0])
+        y_axis = np.linspace(-1, 1, imsize[1])
+        x_coords, y_coords = np.meshgrid(x_axis, y_axis)
+        if 'x' in types:
+            all_coords['x'] = x_coords
+        if 'y' in types:
+            all_coords['y'] = y_coords  
+        # Polar coordinates
+        if 'r' in types:
+            r_coords = np.sqrt(x_coords ** 2 + y_coords ** 2)
+            all_coords['r'] = r_coords
+        if 'phi' in types:
+            phi_coords = np.arctan2(y_coords, x_coords)
+            all_coords['phi'] = phi_coords
+        # Perlin noise
+        if 'perlin' in types:
+            perlin = get_perlin_noise(shape=imsize, seed=perlin_seed)
+            all_coords['perlin'] = perlin
+        return all_coords
 
 
 class Image:
@@ -95,7 +156,7 @@ class Image:
             return self
         else:
             # Create a copy at the requested resolution
-            new_img = self.creator.create_image(self.genome, resolution)
+            new_img = self.creator.create_image(self.genome, (resolution,resolution))
             return new_img
 
     def save_img(self, filename: str = None, resolution: int = None) -> str:
@@ -169,51 +230,44 @@ class Image:
         return Image(abs_diff)
             
 
-class CPPN:
+# class CPPN:
     
-    def __init__(self, net: NNFF, fourier_vec : np.ndarray = None):
-        self.net = net
-        self.channels = net.n_out
-        self.fourier_vec = fourier_vec
-        if fourier_vec is None:
-            self.bias_vec_len = net.n_in - 3
-        else:
-            self.bias_vec_len = net.n_in - len(fourier_vec)*2           
+#     def __init__(self, net: NNFF, coord_types: List[str], bias_vec: np.ndarray, fourier_vec: np.ndarray = None):
+#         self.net = net
+#         self.channels = net.n_out
+#         self.coord_types = coord_types
+#         self.bias_vec = bias_vec
+#         self.fourier_vec = fourier_vec
+#         # Confirm inputs are compatible with size of network.
+#         if not fourier_vec:
+#             input_len = len(coord_types) + len(bias_vec)
+#         else:
+#             input_len = len(fourier_vec) * 2 + len(bias_vec)
+#         assert input_len == net.n_in, "The size of the inputs is not compatible with the network."
+#         self.coord_dict = CPPN.get_coords(imsize)
     
-    @staticmethod
-    def get_coords(imsize: Dims) -> np.ndarray: 
-        x = np.linspace(-1, 1, imsize[0])
-        y = np.linspace(-1, 1, imsize[1])
-        xx, yy = np.meshgrid(x, y)
-        coords = np.stack([xx,yy], axis=-1)
-        return coords
-    
-    def create_image(self, imsize: Dims = (128,128), bias=None) -> Image:
-        """
-        Single-pass image creation which should be able to cope with
-        vanilla or fourier approach, and can have a bias vector of any length.
-        """
-        if bias is None:
-            bias = np.tile(1, self.bias_vec_len)
-        assert len(bias)==self.bias_vec_len, "Bias vector was an unexpected size."
-        coords = CPPN.get_coords(imsize)
-        pixels = imsize[0]*imsize[1]
-        bias_tile = np.tile(bias, (pixels,1)) # The bias (scalar or vector must go in for every pixel)
-        if self.fourier_vec is None:
-            # Vanilla CPPN with coordinate inutes to neural network
-            xcoords= coords[:,:,0].ravel()
-            ycoords= coords[:,:,1].ravel()
-            dcoords = np.sqrt(xcoords**2 + ycoords**2)
-            #dcoords = np.tile(1, xcoords.shape) # TEMP!!
-            img_raw = np.array(self.net.feedforward((xcoords, ycoords, dcoords, *bias_tile.T)))
-        else:
-            # Use fourier features rather than coordinates as inputs to the neural net.
-            feats = fourier.fourier_mapping(coords, self.fourier_vec)
-            n_ffeats = self.fourier_vec.shape[0]
-            feats = feats.reshape(pixels, n_ffeats*2) # times two because we have sin and cos features
-            img_raw = np.array(self.net.feedforward((*feats.T, *bias_tile.T)))
-        if self.channels==1:
-            img_square = img_raw.T.reshape(imsize[0], imsize[1])
-        else:
-            img_square = img_raw.T.reshape(imsize[0], imsize[1], self.channels)
-        return Image(img_square)
+
+#     def create_image(self, imsize: Dims = (128,128)) -> Image:
+#         """
+#         Single-pass image creation which should be able to cope with
+#         vanilla or fourier approach, and can have a bias vector of any length.
+#         """
+#         coord_dict = CPPN.get_coords(imsize)
+#         pixels = imsize[0]*imsize[1]
+#         bias_tile = np.tile(self.bias_vec, (pixels, 1))  # The bias (scalar or vector must go in for every pixel)
+#         if self.fourier_vec is None:
+#             # Vanilla CPPN with coordinate inutes to neural network
+#             use_coords = [self.coord_dict.get(a).ravel() for a in self.coord_types]
+#             img_raw = np.array(self.net.feedforward((*use_coords, *bias_tile.T)))
+#         else:
+#             # Use fourier features rather than coordinates as inputs to the neural net.
+#             use_coords = np.stack([self.coord_dict['x'], self.coord_dict['y']], axis=-1)
+#             feats = fourier.fourier_mapping(use_coords, self.fourier_vec)
+#             n_ffeats = self.fourier_vec.shape[0]
+#             feats = feats.reshape(pixels, n_ffeats*2) # times two because we have sin and cos features
+#             img_raw = np.array(self.net.feedforward((*feats.T, *bias_tile.T)))
+#         if self.channels == 1:
+#             img_square = img_raw.T.reshape(imsize[0], imsize[1])
+#         else:
+#             img_square = img_raw.T.reshape(imsize[0], imsize[1], self.channels)
+#         return Image(img_square)

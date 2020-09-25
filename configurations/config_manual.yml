@@ -14,7 +14,7 @@ population_settings:
 
 image_settings:
     colour_channels: 3
-    coord_types: [x, y, r] # x & y for Cartesian, r and phi for Polar, perlin for noise
+    coord_types: [x, y, r, phi] # x & y for Cartesian, r and phi for Polar, perlin for noise
     bias_length: 1
     fourier_features: 0
 

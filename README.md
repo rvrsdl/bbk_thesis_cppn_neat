@@ -1,29 +1,37 @@
-# RW NEAT
+# A System for Generating Artistic Images using an Interactive Evolutionary Algorithm
+## Birkbeck MSc Computer Science Project
 
-## Install Dependencies
-Set up a virtual environment and install dependencies.
-(<env_name> below should be replaced with your chosen environment name).
+## Intro
+This system uses K. Stanley's CPPN-NEAT algorithm to allow the user to evolve images interactively.
+A simple user interface is provided, allowing selection and saving of the images.
+The system can also be run in "automatic" mode where a pretrained ImageNet ANN selects the images to be evolved.
 
-Using conda:
+## Setup Instructions
+* Clone Repo
+```
+$ git clone https://github.com/Birkbeck/msc-computer-science-project-2019-20-files-rhonro01.git
+```
+* Set up a virtual environment and install dependencies.
+   * Using conda:
 ```
 $ conda env create -f environment.yml
 ```
-Using virtualenv and pip:
-
+   * Or using virtualenv and pip:
 ```
 $ virtualenv -p python3.8 venv
 $ source venv/bin/activate
 $ pip install -r requirements.txt
 ```
-
-## Run
+-  Run
 ```
 $ python main.py
 ```
 
-# Description
+# Contents
 Contents:
-- genome.py: contains the Genome class which handles mutation etc.
+- `main.py`: The entry point for the program.
+- `configs/*.yml`: A few different configuration files.
+- `neat/genome.py`: contains the Genome class which handles mutation etc.
 - nnet.py: Contains the FeedForwardNet class which takes a Genome as input.
 - population.py: TODO. Will contain Population class for handling pop-level stuff
 - netviz.py: Contains functions for visualising a Genome.

@@ -130,3 +130,4 @@ dmypy.json
 
 #RW added
 output/
+deprecated/

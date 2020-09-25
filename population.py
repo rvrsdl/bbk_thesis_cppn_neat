@@ -9,21 +9,27 @@ import copy
 import numpy as np
 
 from genome import Genome
-from caching import HallOfFame
+#from caching import HallOfFame
 import evaluators
 
 
 class Population(object):
 
     def __init__(self, seed_genome: Genome,
-                 hall_of_fame: HallOfFame = None, **kwargs: int) -> None:
+                 hall_of_fame = None, **kwargs: int) -> None:
         self._seed = seed_genome
         self.hall_of_fame = hall_of_fame
         self.popsize = kwargs.get('size', 28)
         self.mutation_rate = kwargs.get('mutation_rate', 0.5)
         self.breed_method = kwargs.get('breed_method', 'total')
         if self.breed_method == 'total':
-            self._n_breed = self._need_to_breed(self.popsize)
+            # Here _thresh refers to the number of genomes which will breed.
+            # The top rated {_thresh} genomes will breed, whatever their rating.
+            self._thresh = self._need_to_breed(self.popsize)
+        elif self.breed_method == 'selected':
+            # Here _thresh refers to the minimum score needed to breed
+            # Only genomes with a rating > {_thresh} will breed.
+            self._thresh = 10
         self.generation = 0
         self.this_gen = None
 
@@ -77,7 +83,7 @@ class Population(object):
         elif self.breed_method == 'total':
             # Breeding as many as we need to totally renew the population
             self.this_gen.sort(key=lambda g: g.get_fitness(), reverse=True)
-            selected = self.this_gen[:self._n_breed]
+            selected = self.this_gen[:self._thresh]
             pairings = itertools.combinations(selected, 2)  # finds all possible combos of 2
             offspring = []
             i = 1
@@ -88,7 +94,7 @@ class Population(object):
                 offspring.append(child)
         elif self.breed_method == 'selected':
             # Breed only from the selected individuals (fitness>10)
-            selected = [g for g in self.this_gen if g.get_fitness() >= 10]
+            selected = [g for g in self.this_gen if g.get_fitness() >= self._thresh]
             selected.sort(key=lambda g: g.get_fitness(), reverse=True)
             if len(selected) < 2:
                 print('WARNING: You must select at least two individuals')

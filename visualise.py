@@ -7,16 +7,18 @@ Created on Sun Mar 22 14:03:29 2020
 """
 import argparse
 import os
+from typing import List
 
 import graphviz as gv
 from genome import Genome
 
-def netviz(genome, show_wgts=False):
+def netviz(genome, show_wgts=False, inp_desc: List[str] = None):
     """
     Pass in a genome - prints a quick visualisation of the network.
     """
-    inp_desc = ['x_coords', 'y_coords', 'd_coords']
-    inp_desc.extend(['bias'] * (genome.n_in-3))
+    if not inp_desc:
+        inp_desc = ['x_coords', 'y_coords', 'd_coords']
+        inp_desc.extend(['bias'] * (genome.n_in-3))
     if genome.n_out == 1:
         out_desc = ['Grayscale']
     elif genome.n_out == 3:
@@ -57,11 +59,11 @@ def netviz(genome, show_wgts=False):
     return nn
 
 
-def render_saved_genome(filepath):
+def render_saved_genome(filepath, inp_desc: List[str] = None):
     filename, suffix = os.path.splitext(filepath)
     assert suffix == '.json', "File must be a JSON file"
     G = Genome.load(filepath)
-    N = netviz(G, show_wgts=True)
+    N = netviz(G, show_wgts=True, inp_desc=inp_desc)
     N.format = 'svg'
     out_fn = filename + '.svg'
     N.render(filename=out_fn, view=True)

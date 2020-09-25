@@ -19,7 +19,7 @@ class ImgGrid(object):
     
     def __init__(self, path_or_arrays: Union[str, List[MyImage]], text: List[str] = None,
                  n_imgs: int = 35, nrows: int = 5, ncols: int = 7, title: str = "Image Grid",
-                 default_scores: List[int] = None):
+                 default_scores: List[int] = None, select_method: str = 'selected', thresh: int = 10):
         """
         Produces a grid of images from saved PNG files.
         Pass in a path name (with wildcards eg. output/*.png)
@@ -34,6 +34,8 @@ class ImgGrid(object):
         self.sliders: List[tk.scale] = []
         self.slider_visible: List[bool] = []
         self.scores: List[float] = []
+        self.select_method = select_method
+        self.thresh = thresh
         self.root.title(title)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
@@ -107,9 +109,8 @@ class ImgGrid(object):
         #input('Press enter...')
         return self.scores
         
-        
     def toggle_slider(self, row, col):
-        index = np.ravel_multi_index((row, col), (self.nrows, self.ncols))
+        index = int(np.ravel_multi_index((row, col), (self.nrows, self.ncols)))
         if self.slider_visible[index]:
             self.sliders[index].grid_forget()
             self.slider_visible[index] = False
@@ -136,17 +137,27 @@ class ImgGrid(object):
         for s in self.sliders:
             s.set(0)
             
-    def check_scores_apply_border(self, thresh=10, repeat=True):
+    def check_scores_apply_border(self, repeat=True):
         """
         This will be called during mainloop every second
         to check if a score has been raised above the threshold
         (10) by the user, and if so to run on the border.
         """
-        for s, l in zip(self.sliders, self.labels):
-            if s.get() >= thresh:
-                l.config(borderwidth=2, relief='solid')
-            else:
-                l.config(borderwidth=0)
+        if self.select_method == 'selected':
+            for s, l in zip(self.sliders, self.labels):
+                if s.get() >= self.thresh:
+                    l.config(borderwidth=2, relief='solid')
+                else:
+                    l.config(borderwidth=0)
+        elif self.select_method == 'total':
+            sort_idx = np.flip(np.argsort([s.get() for s in self.sliders]))
+            for i in range(len(sort_idx)):
+                this_label = self.labels[sort_idx[i]]
+                if i < self.thresh:
+                    this_label.config(borderwidth=2, relief='solid')
+                else:
+                    this_label.config(borderwidth=0)
+
         if repeat:
             self.root.after(500, self.check_scores_apply_border)
         
@@ -205,7 +216,9 @@ class ImgGrid(object):
             show_genome_button.pack()
 
         def show_genome(path):
-            render_saved_genome(path)
+            inp_desc = [c + '_coords' for c in img.creator.coord_types]
+            inp_desc += ['bias'] * img.creator.bias_length
+            render_saved_genome(path, inp_desc=inp_desc)
             show_genome_button['state'] = tk.DISABLED
 
 

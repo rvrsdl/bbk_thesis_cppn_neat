@@ -8,7 +8,7 @@ def sigmoid(z):
 def relu(z):
     return np.maximum(z,0)
 
-def gaussian(z, mu: 'normal' = 0, sigma: (0.4,1) = 0.7):
+def gaussian_black(z, mu: 'normal' = 0, sigma: (0.4,1) = 0.7):
     """
     Possibly useful on output layer (David Ha uses)
     Can increase sigma to get lighter shades.
@@ -16,6 +16,12 @@ def gaussian(z, mu: 'normal' = 0, sigma: (0.4,1) = 0.7):
     """
     return 1/(np.sqrt(2*np.pi)*sigma)*np.exp(-np.power((z - mu)/sigma, 2)/2)
 
+
+def gaussian_white(z, mu: 'normal' = 0, sigma: (0.4,1) = 0.7):
+    """
+    One minus the gaussian, meaning most values come out white rather than black.
+    """
+    return 1 - gaussian_black(z, mu, sigma)
 # def get_mod_func():
 #     divisor = np.abs(np.random.normal(1,2,size=1)) # NAAAT ok to have randomness here. Same genome should always produce same net.
 #     thresh = np.random.uniform(low=0.05, high=divisor/2) # with thresh at divisor/2 half of random normal samples will be below thresh.
@@ -58,7 +64,8 @@ def get_funcs(func_name):
         'tanh': tanhz,
         'sin' : sinz,
         'abs': absz,
-        'gaussian': gaussian,
+        'gaussian_black': gaussian_black,
+        'gaussian_white': gaussian_white,
         'mod': modz,
         'round': round1dp,
         'point': point
