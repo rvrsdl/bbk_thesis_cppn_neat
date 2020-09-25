@@ -12,17 +12,16 @@ Created on Tue Sep 22 20:58:33 2020
 import numpy as np
 import matplotlib.pyplot as plt
 
-from image_cppn import ImageCreator
-from genome import Genome
-import funcs
-
+from src.image_cppn import ImageCreator
+from src.genome import Genome
+from src import funcs
 
 settings = {'output_funcs': [{'func': 'sigmoid', 'prob': 1}]}
 fig, axs = plt.subplots(7, 2,  figsize=[5, 9.3])
 
 # sigmoid xcoords
 x = np.linspace(-1, 1, 128)
-y = funcs.sigmoid(x*5)
+y = funcs.sigmoid(x * 5)
 axs[0,0].plot(x,y)
 axs[0,0].set_xlim([-1,1])
 axs[0,0].set_ylim([0,1])
@@ -68,7 +67,7 @@ axs[1,1].set_title('x_coords -> Abs')
 
 # round, dcoords
 x = np.linspace(-1, 1, 128)
-y = funcs.round1dp(x/2)*2
+y = funcs.round1dp(x / 2) * 2
 axs[2,0].plot(x,y)
 axs[2,0].set_xlim([-1,1])
 axs[2,0].set_ylim([-1,1])
@@ -96,7 +95,7 @@ axs[2,1].set_title('d_coords -> Round')
 
 # sin, ycoors
 x = np.linspace(-1, 1, 128)
-y = funcs.sinz(10*x)
+y = funcs.sinz(10 * x)
 axs[3,0].plot(x,y)
 axs[3,0].set_xlim([-1,1])
 axs[3,0].set_ylim([-1,1])
@@ -149,7 +148,7 @@ axs[4,1].set_title('x_coords -> ReLU')
 
 # mod, xcoords+ycoords
 x = np.linspace(-1, 1, 128)
-y = funcs.modz(x*2, thresh=0.1)
+y = funcs.modz(x * 2, thresh=0.1)
 axs[5,0].plot(x,y)
 axs[5,0].set_xlim([-1,1])
 axs[5,0].set_ylim([0,1])

@@ -6,7 +6,7 @@ import json
 import numpy as np
 import yaml
 
-import funcs
+from src import funcs
 
 INNOV = 0
 CONN_DICT = dict()

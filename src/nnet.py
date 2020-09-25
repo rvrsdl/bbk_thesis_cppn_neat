@@ -1,8 +1,8 @@
 from __future__ import annotations # enables type hints
 
 import numpy as np
-from genome import Genome
-import funcs
+from src.genome import Genome
+from src import funcs
 
 
 class NNFF(object):
@@ -106,5 +106,5 @@ class NNFF(object):
             # TODO: very rare unexplained error that node_vals dict is missing a value. Could get default value if so.
         except:
             print('Saving failed genome as ./failed.json')
-            self.genome.save(filename='failed.json')
+            self.genome.save(filename='../failed.json')
             raise

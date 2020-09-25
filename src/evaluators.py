@@ -12,9 +12,9 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 
-from genome import Genome
-from image_cppn import ImageCreator, Image
-import tk_display as td
+from src.genome import Genome
+from src.image_cppn import ImageCreator, Image
+from src import tk_display as td
 
 # typing definitions
 Genomes = List[Genome]

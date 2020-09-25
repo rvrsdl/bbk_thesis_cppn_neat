@@ -9,14 +9,14 @@ Created on Tue Sep 15 19:43:24 2020
 """
 import yaml
 
-from evaluators import InteractiveEvaluator, PixelPctEvaluator, ImageNetEvaluator
-from image_cppn import ImageCreator
-from genome import Genome
-from population import Population
+from src.evaluators import InteractiveEvaluator, PixelPctEvaluator, ImageNetEvaluator
+from src.image_cppn import ImageCreator
+from src.genome import Genome
+from src.population import Population
 
 
 def main():
-    with open('configurations/config_manual.yml', 'r') as f:  # TODO: allow any config file to be passed in
+    with open('../configurations/config_manual.yml', 'r') as f:  # TODO: allow any config file to be passed in
         CFG = yaml.safe_load(f)
 
     # set up components
@@ -29,7 +29,7 @@ def main():
     if evaluation == 'interactive':
         evaluator = InteractiveEvaluator(image_creator, breed_method=population.breed_method, thresh=population._thresh)
     elif evaluation == 'target':
-        from image_cppn import Image  # TODO: is it bad to have import here?
+        from src.image_cppn import Image  # TODO: is it bad to have import here?
         target = Image.load(CFG['target_img'], CFG['image_settings']['colour_channels'])
         evaluator = PixelPctEvaluator(image_creator, target_img=target, visible=CFG['visible'], breed_method=population.breed_method, thresh=population._thresh)
     elif evaluation == 'imagenet':

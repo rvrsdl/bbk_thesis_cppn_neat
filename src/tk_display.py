@@ -3,15 +3,14 @@ Using Tkinter to display/select images.
 """
 import glob
 import random
-import re
 from typing import List, Union
 
 import tkinter as tk
 from PIL import ImageTk, Image
-from image_cppn import Image as MyImage
+from src.image_cppn import Image as MyImage
 import numpy as np
 
-from visualise import render_saved_genome
+from src.visualise import render_saved_genome
 
 aborted = False
 

@@ -14,10 +14,10 @@ import numpy as np
 from matplotlib.image import imsave, imread
 import matplotlib.pyplot as plt
 
-from nnet import NNFF
-import fourier
-from genome import Genome
-from perlin import get_perlin_noise
+from src.nnet import NNFF
+from src import fourier
+from src.genome import Genome
+from src.perlin import get_perlin_noise
 
 # typing definitions
 Dims = Tuple[int, int]

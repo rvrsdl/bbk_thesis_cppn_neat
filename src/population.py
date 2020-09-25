@@ -8,9 +8,9 @@ import copy
 
 import numpy as np
 
-from genome import Genome
+from src.genome import Genome
 #from caching import HallOfFame
-import evaluators
+from src import evaluators
 
 
 class Population(object):

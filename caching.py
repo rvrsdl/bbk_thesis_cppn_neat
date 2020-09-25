@@ -9,8 +9,8 @@ import copy
 
 import numpy as np
 
-from nnet import NNFF
-from image_cppn import CPPN
+from src.nnet import NNFF
+from src.image_cppn import CPPN
 
 class HallOfFame(object):
     """

@@ -10,7 +10,7 @@ import os
 from typing import List
 
 import graphviz as gv
-from genome import Genome
+from src.genome import Genome
 
 def netviz(genome, show_wgts=False, inp_desc: List[str] = None):
     """
