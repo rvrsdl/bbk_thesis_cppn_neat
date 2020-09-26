@@ -181,7 +181,7 @@ y = funcs.point(x, p=-0.5)
 axs[6,0].plot(x,y)
 axs[6,0].set_xlim([-1,1])
 axs[6,0].set_ylim([0,1])
-axs[6,0].set_title('y = abs(x-0.5)<0.05')
+axs[6,0].set_title('y = abs(x+0.5)<0.05')
 axs[6,0].set_ylabel('(g)', y=1, fontweight='bold', labelpad=10, rotation=0)
 
 G = Genome(4, 1, init_conns=False, settings=settings)

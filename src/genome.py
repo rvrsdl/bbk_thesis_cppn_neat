@@ -64,7 +64,8 @@ class Genome(object):
             'activation_funcs': [{'func': f, 'prob': 1} for f in funcs.get_funcs('names')],
             'output_funcs': [
                 {'func': 'sigmoid', 'prob': 0.5},
-                {'func': 'gaussian', 'prob': 0.5}
+                {'func': 'gaussian_white', 'prob': 0.25},
+                {'func': 'gaussian_white', 'prob': 0.25}
             ],
             'aggregation_funcs': [
                 {'func': 'sum', 'prob': 1},
@@ -317,7 +318,7 @@ class Genome(object):
             # flip the sign
             conn['wgt'] = -conn['wgt']
 
-    def mutate(self):
+    def mutate(self) -> None:
         """
         Applies one of the mutation types based on the probabilities set
         during initialisation.
@@ -331,7 +332,13 @@ class Genome(object):
         chosen_mutation = func_dict.get(self._func_selector('mutation'))
         chosen_mutation()  # Execute the chosen mutation.
 
-    def _func_selector(self, which):
+    def _func_selector(self, which: str) -> str:
+        """
+        Returns one of the activation, output or aggregation functions
+        (specified by the 'which' arg).
+        Selects according to the probabilities stored in self._settings.
+        Returns the name of the selected function (as a string)
+        """
         probs = [a['prob'] for a in self._settings.get(which + '_funcs')]
         probs = probs / np.sum(probs)  # renormalise probabilities
         funcs = [a['func'] for a in self._settings.get(which + '_funcs')]

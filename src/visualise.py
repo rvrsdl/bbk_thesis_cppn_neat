@@ -30,6 +30,9 @@ def netviz(genome, show_wgts=False, inp_desc: List[str] = None):
     nn = gv.Digraph()
     for i in genome.get_node_ids():
         node_info = genome.get_node_gene(i)
+        # Set some empty defaults in case info is missing.
+        node_info.setdefault('act_func', '')
+        node_info.setdefault('agg_func', '')
         if node_info['layer'] == 'input':
             desc = all_desc[i]
             label = "{id}: {layer}\n{desc}".format(desc=desc, **node_info)
