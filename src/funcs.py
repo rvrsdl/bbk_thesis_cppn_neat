@@ -2,11 +2,14 @@ import inspect
 
 import numpy as np
 
+
 def sigmoid(z):
     return 1.0/(1.0+np.exp(-z))
 
+
 def relu(z):
-    return np.maximum(z,0)
+    return np.maximum(z, 0)
+
 
 def gaussian_black(z, mu: 'normal' = 0, sigma: (0.4,1) = 0.7):
     """
@@ -17,44 +20,42 @@ def gaussian_black(z, mu: 'normal' = 0, sigma: (0.4,1) = 0.7):
     return 1/(np.sqrt(2*np.pi)*sigma)*np.exp(-np.power((z - mu)/sigma, 2)/2)
 
 
-def gaussian_white(z, mu: 'normal' = 0, sigma: (0.4,1) = 0.7):
+def gaussian_white(z, mu: 'normal' = 0, sigma: (0.4, 1) = 0.7):
     """
     One minus the gaussian, meaning most values come out white rather than black.
     """
     return 1 - gaussian_black(z, mu, sigma)
-# def get_mod_func():
-#     divisor = np.abs(np.random.normal(1,2,size=1)) # NAAAT ok to have randomness here. Same genome should always produce same net.
-#     thresh = np.random.uniform(low=0.05, high=divisor/2) # with thresh at divisor/2 half of random normal samples will be below thresh.
-#     # If thresh is lower it effectively makes a narrower stripe/line
-#     # And divisor corresponds to how far apart the lines are 
-#     def mod_func(z):
-#         remainders = np.mod(z, divisor)
-#         #thresh = np.median(remainders)
-#         return (remainders<thresh).astype(float)
-#     return mod_func
+
 
 def modz(z, divisor=1, thresh=0.25):
     remainders = np.mod(z, divisor)
     return (remainders<thresh).astype(float)
-    
-def round1dp(z):
-    return np.round(z, decimals=1)
+
+
+def round1dp(z, decimals: (0,3) = 1):
+    return np.round(z, decimals=decimals)
+
 
 def point(z, p=0, thresh=0.05):
     return (np.abs(z-p)<thresh).astype(float)
+
 
 # Wrapping some numpy functions so that my create_args works
 def tanhz(z):
     return np.tanh(z)
 
+
 def sinz(z):
     return np.sin(z)
+
 
 def absz(z):
     return np.abs(z)
 
+
 def nofunc(z):
     return z
+
 
 def get_funcs(func_name):
     func_dict = {
@@ -75,6 +76,7 @@ def get_funcs(func_name):
         return list(func_dict.keys())
     else:
         return func_dict[func_name]
+
     
 def create_args(func):
     """
@@ -107,9 +109,12 @@ def peturb(param):
             return param.default + np.random.normal()
         elif ann == 'positive':
             return abs(param.default + np.random.normal())
-    elif type(ann)==tuple:
+    elif type(ann) == tuple:
         # Get a number from uniform random distribution
         # bounded by values in the annotation tuple.
-        return np.random.uniform(*ann)
+        if type(ann[0]) == float:
+            return np.random.uniform(*ann)
+        elif type(ann[0]) == int:
+            return np.random.randint(*ann)
     else:
         print('Unrecognised function annotation.')

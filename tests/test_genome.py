@@ -1,9 +1,6 @@
 # Testing the Genome class
-import os
-from src.genome import Genome
-#from ..src.visualise import render_saved_genome
 
-#render_saved_genome('stanley_parent1.json')
+from src.genome import Genome
 
 def test_init():
     """
