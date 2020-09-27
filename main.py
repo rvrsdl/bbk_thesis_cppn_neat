@@ -38,6 +38,8 @@ def main():
     # resolve save location for output images
     save_loc = CFG['save_location']
     save_loc = os.path.abspath(save_loc) # because path in config file is relative.
+    if not os.path.exists(save_loc): # If the output folder doesn't exist, create it now.
+        os.mkdir(save_loc)
 
     # set up components
     image_creator = ImageCreator(save_loc=save_loc, **CFG['image_settings'])

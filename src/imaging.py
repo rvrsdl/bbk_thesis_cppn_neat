@@ -27,8 +27,6 @@ class ImageCreator(object):
     def __init__(self, save_loc: str = None, colour_channels: int = 3,
                  coord_types: List[str] = ['x', 'y', 'r'], bias_length: int = 1,
                  fourier_features: int = 0, default_imsize: Tuple[int, int] = (128,128)) -> None:
-        print('hello bkjbkjbkjb')
-        print(os.getcwd())
         self.channels = colour_channels
         self.coord_types = coord_types
         self.bias_length = bias_length
