@@ -27,10 +27,11 @@ class AbstractEvaluator(ABC):
     def __init__(self, image_creator: ImageCreator, visible: bool = False,
                  breed_method: str = None, thresh: int = None) -> None:
         self._image_creator = image_creator
-        self._visible = visible
-        self._breed_method = breed_method
-        self._thresh = thresh
+        self.visible = visible
+        self.breed_method = breed_method
+        self.thresh = thresh
         self.gameover = False  # We can set this to true to break out of caller loop
+        self.show_gens = 10
 
     @abstractmethod
     def run(self, genomes: Genomes, gen_num: int) -> None:
@@ -41,7 +42,7 @@ class AbstractEvaluator(ABC):
         grd = td.ImgGrid(imgs, text=text, n_imgs=28, nrows=4,
                          title="Generation {}".format(gen_num),
                          default_scores=default_scores,
-                         select_method=self._breed_method, thresh=self._thresh)
+                         select_method=self.breed_method, thresh=self.thresh)
         ratings = grd.run()
         if td.aborted:
             self.gameover = True
@@ -85,7 +86,7 @@ class PixelDiffEvaluator(AbstractEvaluator):
     def run(self, genomes: Genomes, gen_num: int) -> None:
         imgs = self._create_images(genomes)
         ratings = [self.dist_rating(img) for img in imgs]
-        if self._visible:
+        if self.visible or (gen_num % self.show_gens==0):
             user_ratings = self.show_grid(imgs, default_scores=ratings, gen_num=gen_num)
             if user_ratings:
                 ratings = user_ratings  # WARNING: this allows user to modify default ratings
@@ -205,7 +206,7 @@ class ImageNetEvaluator(AbstractEvaluator):
             self._class_seen[lab] = self._class_seen.setdefault(lab, 0) + 1
         multiplier = np.array([self._fade_factor ** self._class_seen[l] for l in best_labels])
         ratings = best_probs * multiplier * 100  # *100 because ratings need to be in range 0-100
-        if self._visible:
+        if self.visible or (gen_num % self.show_gens==0):
             text = ['{:.12}: {:.0f}%'.format(l, p*100) for (l, p) in zip(best_labels, best_probs)]
             user_ratings = self.show_grid(imgs, text=text, default_scores=ratings, gen_num=gen_num)
             #user_ratings = self.show_grid(imgs, text=text, default_scores=ratings, gen_num=gen_num)

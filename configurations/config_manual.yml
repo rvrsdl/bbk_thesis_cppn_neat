@@ -48,6 +48,6 @@ genome_settings:
         - {func: disable_connection, prob: 0.1}
     disable_prob: 0.6
 
-save_location: '/home/riversdale/Documents/MSc/thesis/rw_neat/output/'
+save_location: './output'
 save_size: 512
 

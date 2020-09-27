@@ -9,7 +9,7 @@ import copy
 
 import numpy as np
 
-from src.nnet import NNFF
+from src.cppn import CPPN
 from src.imaging import CPPN
 
 class HallOfFame(object):
@@ -68,5 +68,5 @@ class HallOfFame(object):
         for k,v in self.members.items():
             v.sort(key= lambda g: g.get_fitness(raw=True), reverse=True)
             for i in range(per_species):
-                cppn = CPPN(NNFF(v[i]), fmv)
+                cppn = CPPN(CPPN(v[i]), fmv)
                 imgs.append( cppn.create_image((128,128), bias=bias_vec) )

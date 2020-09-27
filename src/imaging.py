@@ -14,7 +14,7 @@ import numpy as np
 from matplotlib.image import imsave, imread
 import matplotlib.pyplot as plt
 
-from src.nnet import NNFF
+from src.cppn import CPPN
 from src import fourier
 from src.genome import Genome
 from src.perlin import get_perlin_noise
@@ -24,9 +24,11 @@ Dims = Tuple[int, int]
 
 class ImageCreator(object):
     
-    def __init__(self, save_loc: str = os.getcwd(), colour_channels: int = 3,
+    def __init__(self, save_loc: str = None, colour_channels: int = 3,
                  coord_types: List[str] = ['x', 'y', 'r'], bias_length: int = 1,
                  fourier_features: int = 0, default_imsize: Tuple[int, int] = (128,128)) -> None:
+        print('hello bkjbkjbkjb')
+        print(os.getcwd())
         self.channels = colour_channels
         self.coord_types = coord_types
         self.bias_length = bias_length
@@ -39,7 +41,7 @@ class ImageCreator(object):
         self.perlin_seed = np.random.randint(0, 100)
         # To save recalculating coords each time, keep the coords for the default image size.
         self.default_imsize = default_imsize
-        self.default_coords = ImageCreator.get_coords(imsize=self.default_imsize, types=self.coord_types, perlin_seed=self.perlin_seed)  
+        self.default_coords = ImageCreator.get_coords(imsize=self.default_imsize, types=self.coord_types, perlin_seed=self.perlin_seed)
         self.save_loc = save_loc
         self.base_name = datetime.now().strftime("%d%b%Y_%I%p%M")
 
@@ -59,7 +61,7 @@ class ImageCreator(object):
             coord_dict = self.default_coords
         else:
             coord_dict = ImageCreator.get_coords(imsize=imsize, types=self.coord_types, perlin_seed=self.perlin_seed)
-        cppn = NNFF(genome)
+        cppn = CPPN(genome)
         pixels = imsize[0]*imsize[1]
         bias_tile = np.tile(self.bias_vec, (pixels, 1))  # The bias (scalar or vector must go in for every pixel)
         if self.fourier_features:
@@ -81,13 +83,6 @@ class ImageCreator(object):
         image_out.genome = genome  # The image has a reference to its own genome
         image_out.creator = self # give it a ref to the creator in case we need to upscale it.
         return image_out
-        
-        
-        # cppn = CPPN(NNFF(genome), self.coord_types, self.bias_vec, self.fourier_map_vector)
-        # img = cppn.create_image( (size, size))
-        # img.genome = genome  # The image has a reference to its own genome
-        # img.creator = self  # give it a ref to the creator in case we need to upscale it.
-        # return img
     
     @staticmethod
     def get_coords(imsize: Tuple[int, int] = (128,128), types: List[str] = ['x','y','r','phi','perlin'], perlin_seed=None) -> Dict[str, np.ndarray]:

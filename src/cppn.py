@@ -5,14 +5,14 @@ from src.genome import Genome
 from src import funcs
 
 
-class NNFF(object):
+class CPPN(object):
     """
     This is initialised with a genome object and creates a working feedforward neural net.
     """
-    genome = None
+    #genome = None
 
     def __init__(self, in_genome: Genome) -> None:
-        assert not in_genome.recurrent, "NNET_FF can only cope with a non-recurrent genome."
+        assert not in_genome.recurrent, "CPPN can only cope with a non-recurrent genome."
         self.genome = in_genome
         self.layers = self.get_layers_ff()
         self.n_layers = len(self.layers)
@@ -95,15 +95,11 @@ class NNFF(object):
                 agg_funcs = [agg_func_dict.get(s) for s in agg_func_strs]
                 zs = np.squeeze([agf(w[:, None] * inp_vec[None, :, :], axis=1)
                                  for w, agf in zip(weights, agg_funcs)], axis=1)
-                # zs = []
-                # for w, agf in zip(weights, agg_funcs):
-                #     zs.append(agf(w[:,None] * inp_vec[None, :, :], axis=1)) #mixed agg_funcs
-                # zs = np.squeeze(zs, axis=1)
             out_vec = np.array([f(z, **p) for f, z, p in zip(act_funcs, zs, act_args)])
             node_vals.update({node: val for (node, val) in zip(linfo['to_nodes'], out_vec)})
         try:
-            return [node_vals[n] for n in self.genome.get_node_ids('output')]
-            # TODO: very rare unexplained error that node_vals dict is missing a value. Could get default value if so.
+            return [node_vals.get(n,0) for n in self.genome.get_node_ids('output')]
+            # TODO: very rare unexplained error that node_vals dict is missing a value. Gets default value of zero if so.
         except:
             print('Saving failed genome as ./failed.json')
             self.genome.save(filename='../failed.json')

@@ -10,7 +10,7 @@ import numpy as np
 
 from src.genome import Genome
 #from caching import HallOfFame
-from src import evaluators
+from src.evaluators import AbstractEvaluator
 
 
 class Population(object):
@@ -159,7 +159,7 @@ class Population(object):
         assert popsize in options[:, 1], "Invalid population size specified"
         return int(options[options[:, 1] == popsize, 0])
     
-    def run(self, evaluator: evaluators.AbstractEvaluator, generations: int = 5):
+    def run(self, evaluator: AbstractEvaluator, generations: int = 5):
         # eval_func should take a list of genomes and set each of their fitness
         for i in range(generations):
             if evaluator.gameover:
@@ -170,6 +170,7 @@ class Population(object):
                     self._create_first_gen()
                 else:
                     self._breed_next_gen()
+                is_final_gen = self.generation==generations
                 evaluator.run(self.this_gen, self.generation)
                 if self.hall_of_fame:
                     self.hall_of_fame.cache(self) # put any outstanding members of this generation in the hall of fame.

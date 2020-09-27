@@ -3,14 +3,14 @@
 # Config file for NEAT-CPPN system.
 
 # Could do some of this as command_line options.
-visible: True
-evaluation: interactive # / target / imagenet
-max_generations: 50
+visible: False #True
+evaluation: imagenet #interactive # / target / imagenet
+max_generations: 100
 
 population_settings:
     size: 28
     mutation_rate: 0.5
-    breed_method:  selected # / total / species
+    breed_method:  total #selected # / total / species
 
 image_settings:
     colour_channels: 3
@@ -48,6 +48,6 @@ genome_settings:
         - {func: disable_connection, prob: 0.1}
     disable_prob: 0.6
 
-save_location: '/home/riversdale/Documents/MSc/thesis/rw_neat/output/'
+save_location: './output'
 save_size: 512
 

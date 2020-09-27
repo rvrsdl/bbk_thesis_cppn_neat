@@ -13,6 +13,7 @@ Example results can be viewed at: https://www.instagram.com/evolved_art_neat/
 ```
 $ git clone https://github.com/Birkbeck/msc-computer-science-project-2019-20-files-rhonro01.git
 ```
+  * Then cd into the repo directory
 * Set up a virtual environment and install dependencies.
    * Using conda:
 ```
