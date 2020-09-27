@@ -15,7 +15,7 @@ import tensorflow_hub as hub
 
 from src.genome import Genome
 from src.imaging import ImageCreator, Image
-from src import tk_display as td
+from src import userinterface as ui
 
 # typing definitions
 Genomes = List[Genome]
@@ -39,12 +39,12 @@ class AbstractEvaluator(ABC):
     
     def show_grid(self, imgs: Images, text: np.array = None,
                   default_scores: np.array = None, gen_num: int = 0) -> np.array:
-        grd = td.ImgGrid(imgs, text=text, n_imgs=28, nrows=4,
+        grd = ui.ImgGrid(imgs, text=text, n_imgs=28, nrows=4,
                          title="Generation {}".format(gen_num),
                          default_scores=default_scores,
                          select_method=self.breed_method, thresh=self.thresh)
         ratings = grd.run()
-        if td.aborted:
+        if ui.aborted:
             self.gameover = True
         return ratings
     
