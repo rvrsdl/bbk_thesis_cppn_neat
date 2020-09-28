@@ -1,20 +1,17 @@
-
-
 # Config file for NEAT-CPPN system.
 
-# Could do some of this as command_line options.
-visible: False #True
-evaluation: imagenet #interactive # / target / imagenet
+visible: True
+evaluation: interactive # / target / imagenet
 max_generations: 100
 
 population_settings:
     size: 28
-    mutation_rate: 0.5
-    breed_method:  total #selected # / total / species
+    mutation_rate: 0.6
+    breed_method:  selected # / total / species
 
 image_settings:
-    colour_channels: 3
-    coord_types: [x, y, r] # x & y for Cartesian, r and phi for Polar, perlin for noise
+    colour_channels: 1
+    coord_types: [x, y, r, perlin] # x & y for Cartesian, r and phi for Polar, perlin for noise
     bias_length: 1
     fourier_features: 0
 
@@ -27,9 +24,9 @@ genome_settings:
         - {func: tanh, prob: 1}
         - {func: sin, prob: 1}
         - {func: abs, prob: 1}
-        - {func: mod, prob: 1}
-        - {func: round, prob: 1}
-        - {func: point, prob: 1}
+        - {func: mod, prob: 0.2}
+        - {func: round, prob: 0.2}
+        - {func: point, prob: 0.2}
         - {func: nofunc, prob: 0.5}
         - {func: gaussian_white, prob: 0.5}
         - {func: gaussian_black, prob: 0.5}

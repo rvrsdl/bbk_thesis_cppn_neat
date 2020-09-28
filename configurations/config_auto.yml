@@ -1,8 +1,5 @@
-
-
 # Config file for NEAT-CPPN system.
 
-# Could do some of this as command_line options.
 visible: True
 evaluation: imagenet # interactive # / target / imagenet
 max_generations: 50

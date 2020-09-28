@@ -90,7 +90,7 @@ C = ImageCreator(colour_channels=1)
 C.bias_vec = [1]
 img = C.create_image(G)
 img.show(axs[2,1])
-axs[2,1].set_title('d_coords -> Round')
+axs[2,1].set_title('r_coords -> Round')
 
 
 # sin, ycoors
@@ -172,7 +172,7 @@ C = ImageCreator(colour_channels=1)
 C.bias_vec = [1]
 img = C.create_image(G)
 img.show(axs[5,1])
-axs[5,1].set_title('x_coords, y_coords -> Mod')
+axs[5,1].set_title('x_coords, y_coords -> ThreshMod')
 
 
 # point, xcoords

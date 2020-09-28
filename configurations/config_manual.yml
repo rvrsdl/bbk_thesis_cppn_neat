@@ -1,25 +1,23 @@
+# Config file for CPPN-NEAT system.
 
-
-# Config file for NEAT-CPPN system.
-
-# Could do some of this as command_line options.
-visible: True
-evaluation: interactive # / target / imagenet
-max_generations: 50
+visible: True # whether to show to UI
+evaluation: interactive # [/ target / imagenet] # which evaluator to use
+max_generations: 50 # program will terminate terminate after this many generations
 
 population_settings:
     size: 28
-    mutation_rate: 0.5
-    breed_method:  selected # / total / species
+    mutation_rate: 0.6
+    breed_method:  selected # [/ total]
 
 image_settings:
-    colour_channels: 3
-    coord_types: [x, y, r, phi] # x & y for Cartesian, r and phi for Polar, perlin for noise
+    colour_channels: 3 # 3 for RGB, 1 for grayscale
+    coord_types: [x, y, r] # any combination of x & y for Cartesian, r and phi for Polar, perlin for noise
     bias_length: 1
-    fourier_features: 0
+    fourier_features: 0 # set to >0 (eg. 64) to use Fourier feauture mapping
 
-target_image: 'duck_bw_128.png'
+target_image: 'duck_bw_128.png' # only relevant if using the 'target' evaluator
 
+# Section below sets the probability that each activation/aggregation/output function and mutation type will be selected.
 genome_settings:
     activation_funcs:
         - {func: sigmoid, prob: 1}
@@ -48,6 +46,6 @@ genome_settings:
         - {func: disable_connection, prob: 0.1}
     disable_prob: 0.6
 
-save_location: './output'
-save_size: 512
+save_location: './output' # saved images & genomes will appear in this folder.
+save_size: 512 # resolution for saved images
 

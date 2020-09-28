@@ -101,8 +101,8 @@ class Population(object):
                 print('Please try again')
                 self.generation -= 1  # Undo the increment to the generation number
                 return None # We haven't updated this_gen so the user just tries again.
-            pairings = list(itertools.combinations(selected, 2))  # finds all possible combos of 2
-            offspring = selected # keep the chosen ones
+            pairings = list(itertools.combinations(selected, 2))  # finds all possible combos of 2 (sorted)
+            offspring = selected # keep the chosen ones froom this generation
             for i in range(self.popsize - len(selected)):
                 idx = i % len(pairings)  # so we can go round again if we need to
                 p1 = pairings[idx][0]
